@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark"  creationComplete="init()"
+		  xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" xmlns:component="com.ylsoft.component.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+<fx:Script>
+	<![CDATA[
+		import com.ylsoft.common.Toolkit;
+		import com.ylsoft.component.BuissnesserChooserCusMuti;
+		import com.ylsoft.component.BuissnesserChooserCusSingle;
+		import com.ylsoft.core.Amf;
+		import com.ylsoft.core.AppConfig;
+		import com.ylsoft.core.EventDelegate;
+		import com.ylsoft.core.ModuleFactory;
+		import com.ylsoft.core.ModuleGlobal;
+		import com.ylsoft.core.UIProgressBar;
+		import com.ylsoft.event.AppEvent;
+		
+		import mx.collections.ArrayCollection;
+		import mx.controls.Alert;
+		import mx.core.FlexGlobals;
+		import mx.managers.PopUpManager;
+
+		private var listModule:String = 'managefunc/merge_server_list';
+		
+		/*****表单对象****/
+		private var formObj:Object;
+		
+		private var amf:Amf;
+		
+		private var sourceServers:ArrayCollection;
+		
+		private var copyServers:ArrayCollection;
+		
+		public var servers:ArrayCollection = new ArrayCollection;
+		
+		public var server:Object = new Object;
+		
+		private function init():void{
+			
+			FlexGlobals.topLevelApplication.form_return.enabled=true;
+			FlexGlobals.topLevelApplication.form_return.addEventListener(MouseEvent.CLICK,returnTable);//定义返回列表方法
+			
+			fb.save_btn.label = '提交申请';
+			//监听运营商服务器选择事件
+			this.addEventListener(AppEvent.BUISSNESSER_CHOOSER_CUS_MUTI_COMPLETE,bccm_complete);
+			this.addEventListener(AppEvent.BUISSNESSER_CHOOSER_CUS_SINGLE_COMPLETE,bccs_complete);
+			
+			//请求该用户运营商所对应的服务器列表
+			if(AppConfig.buissnesser.length > 0){
+				amf = new Amf;
+				amf.registerCallBack(setServers);
+				amf.startService('serverService','getServersByBids',AppConfig.buissnesser.toArray());
+			}else{
+				Alert.show("没有任何运营商权限");
+			}
+			
+			fb.save_btn.addEventListener(MouseEvent.CLICK,save);
+		}
+		
+		private function bccm_complete(evt:AppEvent):void{
+		      if(servers.length > 0){
+				  var choosen_servers : String = '';
+				  for each(var obj  : Object in servers){
+					  choosen_servers  += obj.name+',    ';
+				  }
+				  this.fromservers_desp.text = "已选择 "+choosen_servers;
+				  this.mergeinfo.text = choosen_servers+"   ---------合服成--------->    "+this.server.name;
+			  }
+		}
+		
+		private function bccs_complete(evt:AppEvent):void{
+			 if(server.hasOwnProperty("name")){
+				 this.fromservers_btn.enabled = true;
+				 this.toserver_desp.text = "已选择 "+this.server.name;
+				 for(var i:int = 0; i<  copyServers.length ; i++){
+					 if(copyServers.getItemAt(i).name == this.server.name){
+						 copyServers.removeItemAt(i);
+						 break;
+					 }
+				 }
+			 }
+		}
+		
+		private function setServers(evt:AppEvent):void{
+			this.sourceServers  = new ArrayCollection(amf.getResult() as Array);
+			this.copyServers = Toolkit.clone(sourceServers) as ArrayCollection;
+		}
+		
+		private function returnTable(evt:MouseEvent):void{
+			FlexGlobals.topLevelApplication.main_right.removeAllElements();
+			ModuleGlobal.Modulefactory_main = new ModuleFactory();
+			ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+			ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+			AppConfig.formoperation = null;	
+			FlexGlobals.topLevelApplication.form_return.removeEventListener(MouseEvent.CLICK,returnTable);
+		}
+		
+		private function buissnesserChooserMuti():void{
+			var bc : BuissnesserChooserCusMuti = new BuissnesserChooserCusMuti();
+			bc.addEventListener(AppEvent.MUTI_CUS_BUISSNESSER_CHOOSER_READY,EventDelegate.createWithoutEvent(initBCMData,[bc]));
+			bc.width = 800;
+			bc.height = 400;
+			PopUpManager.addPopUp(bc,this,true);
+			PopUpManager.centerPopUp(bc);
+		}
+		
+		private function initBCMData(params:Array):void{
+			//根据合服的运营商过滤服务器
+			/*var copyServersFilter : Array = new Array();
+			for(var i:int = 0 ; i< this.copyServers.length ; i++){
+				if(this.server.bid == copyServers[i].bid){
+					copyServersFilter.push(copyServers[i]);
+				}
+			}*/
+			(params[0] as BuissnesserChooserCusMuti).setAllServers(copyServers.source);
+		}
+		
+		private function buissnesserChooserSingle():void{
+			var bc : BuissnesserChooserCusSingle = new BuissnesserChooserCusSingle();
+			bc.addEventListener(AppEvent.SINGLE_CUS_BUISSNESSER_CHOOSER_READY,EventDelegate.createWithoutEvent(initBCSData,[bc]));
+			bc.width = 800;
+			bc.height = 400;
+			PopUpManager.addPopUp(bc,this,true);
+			PopUpManager.centerPopUp(bc);
+		}
+		
+		private function initBCSData(params:Array):void{
+			this.reset();
+			copyServers = Toolkit.clone(sourceServers);
+			(params[0] as BuissnesserChooserCusSingle).setAllServers(this.copyServers.toArray());
+		}
+		
+		private function reset():void{
+			this.server = null;
+			this.servers = null;
+			this.fromservers_btn.enabled = false;
+			this.fromservers_desp.text = '';
+			this.toserver_desp.text = '';
+			this.mergeinfo.text = '';
+		}
+		
+		private function save(evt:MouseEvent):void{
+			var _mergetime : String = mergetime.text;
+			if(_mergetime == ''){
+				Alert.show("请选择合服时间");
+				return;
+			}
+			
+			var _server : Object = server;
+			if(!_server.hasOwnProperty("name")){
+				Alert.show("请选择合服服务器");
+				return;
+			}
+			
+			var _servers : ArrayCollection = servers;
+			if(servers.length < 1){
+				Alert.show("请选择被合服服务器");
+				return;
+			}
+			
+			var condition : Object = new Object();
+			condition.mergetime = _mergetime;
+			condition.server = _server;
+			condition.servers = _servers.toArray();
+			amf = new Amf();
+			amf.registerCallBack(saveComplete);
+			amf.startService('mergeServerApplyService','save',condition);
+			
+		}
+		
+		private function saveComplete(evt:AppEvent):void{
+			var result:Boolean = amf.getResult() as Boolean;
+			if(result){
+				FlexGlobals.topLevelApplication.main_right.removeAllElements();
+				ModuleGlobal.Modulefactory_main = new ModuleFactory();
+				ModuleGlobal.Modulefactory_main.setProgress(UIProgressBar.getInstance());
+				ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+				ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+				AppConfig.formoperation = null;	
+				AppConfig.formid = 0;
+				Alert.show('操作成功');
+				return;
+			}
+			Alert.show('操作失败');
+		}
+	]]>
+</fx:Script>
+	<s:Panel x="0" y="0" width="100%" height="100%" title="申请合服">
+		<s:Form x="0" y="0" width="754" height="404">
+			<s:layout>
+				<s:TileLayout/>
+			</s:layout>
+			<s:FormItem width="263" label="合服时间">
+				<s:layout>
+					<s:BasicLayout/>
+				</s:layout>
+				<mx:DateField id="mergetime" x="23" y="0" width="161" buttonMode="true"
+							  dayNames="[日,一,二,三,四,五,六]" formatString="YYYY-MM-DD"
+							  monthNames="[一月,二月,三月,四月,五月,六月,七月,八月,九月,十月,十一月,十二月]"
+							  yearNavigationEnabled="true"/>
+			</s:FormItem>
+			<s:FormItem width="257" label="合成服">
+				<s:layout>
+					<s:BasicLayout/>
+				</s:layout>
+				<s:helpContent>
+					<s:VGroup>
+					</s:VGroup>
+				</s:helpContent>
+				<mx:LinkButton id="toserver_btn" x="19" width="94" label="浏览服务器"
+							   click="buissnesserChooserSingle()" color="#0520F0" fontStyle="normal"
+							   textDecoration="underline"/>
+				<s:Label id="toserver_desp" x="121" y="5" width="511" height="38"/>
+			</s:FormItem>
+			<s:FormItem id="fromservers" label="被合成服">
+				<s:layout>
+					<s:BasicLayout/>
+				</s:layout>
+				<s:helpContent>
+					<s:VGroup>
+					</s:VGroup>
+				</s:helpContent>
+				<mx:LinkButton id="fromservers_btn" x="6" y="0" width="94" label="浏览服务器" click="buissnesserChooserMuti()" enabled="false"
+							   color="#0520F0" fontStyle="italic" textDecoration="underline"/>
+				<s:Label id="fromservers_desp" x="107" y="4" width="512" height="34"/>
+			</s:FormItem>
+			<s:FormItem width="719" label="合服信息">
+				<s:layout>
+					<s:BasicLayout/>
+				</s:layout>
+				<s:Label id="mergeinfo" x="24" y="0" width="591" height="45" text="无"/>
+			</s:FormItem>
+		</s:Form>
+		<component:FormBottom id="fb">
+		</component:FormBottom>
+	</s:Panel>
+</s:Module>

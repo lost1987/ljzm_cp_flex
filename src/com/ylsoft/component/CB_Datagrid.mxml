@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.ListEvent;
+			public var dataArray:ArrayCollection = new ArrayCollection();  //初始化的数据源
+			public var selecteditems:ArrayCollection = new ArrayCollection();//被选中的项
+			public var selecteditem:Object = new Object();
+			public var itemsControll:Function = new Function; //可以通过这个函数 来实现表格header的checkbox被选中这个事件 控制表格的内容
+			public var isDispatchCheckStateChange : Boolean = false;//设置是否广播checkbox的状态被改变的事件
+			
+			
+			
+			/**
+			 * 给数据绑定加入select属性
+			 * */
+			public function initData(data:ArrayCollection):void{
+				if(data == null)return;
+				if(data.length > 0){
+					for each(var obj:Object in data){
+						obj._select = false;
+					}
+				}
+				this.dataArray = data;
+				this.dg.dataProvider = this.dataArray;
+			}
+			
+			public function clickHanlder(obj:Object):void{ 
+				if(dataArray == null) return;
+				if(obj.chxBox.selected){
+					dataArray.getItemAt(dg.selectedIndex)._select = true;
+					this.selecteditem = dataArray.getItemAt(dg.selectedIndex);
+				}else{
+					dataArray.getItemAt(dg.selectedIndex)._select = false;
+					this.selecteditem = dataArray.getItemAt(dg.selectedIndex);
+				}
+				dg.dataProvider = dataArray;
+				checkSelectedItems();
+				
+				//分发事件 datagrid 的 chkbox被选中的状态改变
+				if(this.isDispatchCheckStateChange)
+				this.dg.dispatchEvent(new AppEvent(AppEvent.CHKDATAGRID_CHECKED_CHANGE));
+			}
+			
+			public function clickHandlerAll(obj:Object):void{
+				if(dataArray == null) return;
+				selecteditems = new ArrayCollection();
+				if(obj.chxBoxAll.selected){
+					for(var i : Number = 0; i< dataArray.length;i++){
+						dataArray[i]._select = true;
+					}
+					checkSelectedItems();
+				}else{
+					for(i=0; i< dataArray.length;i++){
+						dataArray[i]._select = false;
+					}
+				}
+				dg.dataProvider = dataArray;
+			}
+			
+			/**
+			 * 重新计算选中项
+			 * */
+			private function checkSelectedItems():void{
+				selecteditems = new ArrayCollection();
+				for(var i:Number = 0; i < dataArray.length; i++){
+					if(dataArray[i]._select){
+						//Alert.show(dataArray[i].name);
+						selecteditems.addItem(dataArray[i]);
+					}
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<mx:DataGrid id="dg" x="0" y="0" width="100%" height="100%" borderVisible="false" horizontalScrollPolicy="auto" doubleClickEnabled="true"  
+				 dropShadowVisible="true" editable="false" rollOverColor="#CEDBEF">
+		<mx:columns>
+			<mx:DataGridColumn  dataField="select"  headerText="id" dataTipField="全选" width="25" draggable="false" editable="false" sortable="false">  
+				<mx:headerRenderer>
+					 <fx:Component>
+						 <mx:HBox horizontalAlign="center">
+							 <s:CheckBox id="chxBoxAll"   click="outerDocument.itemsControll(this)"
+										 change="outerDocument.clickHandlerAll(this);"/>  
+						 </mx:HBox>
+					 </fx:Component>
+				</mx:headerRenderer>
+				<mx:itemRenderer>  
+					<fx:Component>  
+						<mx:HBox horizontalAlign="center">                           
+							<s:CheckBox id="chxBox" selected="{data._select}"   
+										change="outerDocument.clickHanlder(this);"/>  
+						</mx:HBox>  
+					</fx:Component>  
+				</mx:itemRenderer>  
+			</mx:DataGridColumn>  
+		</mx:columns>
+	</mx:DataGrid>
+</s:Group>

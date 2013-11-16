@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" creationComplete="init(event)"
+		  xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.component.FormBottom;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			
+			private var amf:Amf;
+			private var _amf:Amf;
+			private var fb :FormBottom;
+			private var listModule:String = 'server/server_list';
+			private var editModule:String = 'server/server_add';
+			
+			/****表单属性*****/
+			private var _name:String;
+			private var _ip : String;
+			private var _port : String ;
+			private var _buissnesser : Object ;
+			private var _dbuser:String;
+			private var _dbpwd:String;
+			private var _status:Object;
+			private var _dynamic_dbname:String;
+			private var _server_ip:String;
+			private var _server_port:String;
+			private var _sid : String;
+			
+			/*****表单对象****/
+			private var formObj:Object;
+			
+			private function init(evt:Event):void{
+				/*****通用方法*****/
+				FlexGlobals.topLevelApplication.form_return.enabled=true;
+				FlexGlobals.topLevelApplication.form_return.addEventListener(MouseEvent.CLICK,returnTable);//定义返回列表方法
+				fb = new FormBottom();
+				this.addElement(fb);
+				fb.save_btn.addEventListener(MouseEvent.CLICK,save);
+				
+				
+				/*******单独方法********/
+				if(AppConfig.formoperation == AppConfig.FORMADD){
+					this.panel.title = "添加服务器";
+					amf = new Amf;
+					amf.setFaultMessage("无法获取运营商数据");
+					amf.registerCallBack(setBuissnessers);
+					amf.startService('adminService','getBuissnessers');
+				}else{
+					this.panel.title = "编辑服务器";
+					this.sid.enabled = false;
+					var id :Number = AppConfig.formid;
+					//发送service 请求
+					_amf = new Amf();
+					_amf.registerCallBack(setForm);
+					_amf.startService('serverService','edit',id);
+				}
+				
+				//服务器状态
+				this.status.labelField = 'name';
+				this.status.dataProvider = new ArrayCollection([{name:"是",value:1},{name:"否",value:0}]);
+				this.status.selectedIndex = -1;
+				
+			}
+			
+			private function returnTable(evt:MouseEvent):void{
+				FlexGlobals.topLevelApplication.main_right.removeAllElements();
+				ModuleGlobal.Modulefactory_main = new ModuleFactory();
+				ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+				ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+				AppConfig.formoperation = null;	
+				FlexGlobals.topLevelApplication.form_return.removeEventListener(MouseEvent.CLICK,returnTable);
+			}
+			
+			private function formvalidate():Boolean{
+				_name = Toolkit.blankClear(servername.text);
+				_ip   = Toolkit.blankClear(ip.text);
+				_port   = Toolkit.blankClear(port.text);
+				_buissnesser   = this.buissnesser.selectedItem;
+				_dbuser = Toolkit.blankClear(dbuser.text);
+				_dbpwd = Toolkit.blankClear(dbpwd.text);
+				_status = this.status.selectedItem;
+				_dynamic_dbname = Toolkit.blankClear(this.dynamic_dbname.text);
+				_server_ip = Toolkit.blankClear(this.server_ip.text);
+				_server_port = Toolkit.blankClear(this.server_port.text);
+				_sid  = this.sid.text;
+				
+				if(_name!='' && _ip!='' && _port!='' && _dbuser!='' && _dbpwd != '' && _status != null && _buissnesser != null && _dynamic_dbname != '' && _server_ip!='' && _server_port != '' ){
+					
+					if(_buissnesser == null){
+						Alert.show('请选择运营商');
+						return false;
+					}
+					return true;
+				}
+				return false;
+			}
+			
+			private function save(evt:MouseEvent):void{
+				
+				if(this.formvalidate() == false)return;
+				
+				formObj = new Object();
+				formObj.name = _name;
+				formObj.ip = _ip;
+				formObj.port = _port;
+				formObj.bid = _buissnesser.id;
+				formObj.dbuser = _dbuser;
+				formObj.dbpwd = _dbpwd;
+				formObj.status = _status.value;
+				formObj.dynamic_dbname = _dynamic_dbname;
+				formObj.server_ip = _server_ip;
+				formObj.server_port = _server_port;
+				
+				
+				if(AppConfig.formoperation == AppConfig.FORMEDIT){
+					formObj.id = AppConfig.formid;
+				}else{
+					if(_sid == ''){
+						Alert.show('唯一标识不能为空');
+						return;
+					}
+					formObj.sid = _sid;
+				}
+				
+				amf = new Amf();
+				amf.registerCallBack(saveComplete);
+				amf.startService('serverService','save',formObj);
+			}
+			
+			private function saveComplete(evt:AppEvent):void{
+				var result:Boolean = amf.getResult() as Boolean;
+				if(result){
+					FlexGlobals.topLevelApplication.main_right.removeAllElements();
+					ModuleGlobal.Modulefactory_main = new ModuleFactory();
+					ModuleGlobal.Modulefactory_main.setProgress(UIProgressBar.getInstance());
+					ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+					ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+					AppConfig.formoperation = null;	
+					AppConfig.formid = 0;
+					Alert.show('操作成功');
+					return;
+				}
+				Alert.show('操作失败');
+			}
+			
+			
+			private function setBuissnessers(evt:AppEvent):void{
+				var result:ArrayCollection = new ArrayCollection(amf.getResult() as Array);
+				buissnesser.dataProvider = result;
+				buissnesser.labelField = 'name';
+				
+				if(formObj != null){
+					for(var i : Number = 0 ;i < result.length; i++){
+						if(result[i].id == formObj.bid){
+							buissnesser.selectedIndex = i;
+							break;
+						}
+					}
+				}else{
+					buissnesser.selectedIndex = -1;
+				}
+			}
+			
+			
+			private function setForm(evt:AppEvent):void{
+				formObj =    _amf.getResult() as Object;
+				servername.text = formObj.name;
+				ip.text = formObj.ip;
+				port.text = formObj.port;
+				dbuser.text = formObj.dbuser;
+				dbpwd.text = formObj.dbpwd;
+				server_ip.text = formObj.server_ip;
+				server_port.text = formObj.server_port;
+				dynamic_dbname.text = formObj.dynamic_dbname;
+				sid.text = formObj.id;
+				if(formObj.status == 1)this.status.selectedIndex = 0;
+				else this.status.selectedIndex = 1;
+				
+				//获取所有运营商
+				amf = new Amf();
+				amf.registerCallBack(setBuissnessers);
+				amf.startService('adminService','getBuissnessers');
+			}
+		]]>
+	</fx:Script>
+	<s:Panel id="panel" x="0" y="0" width="100%" height="100%" >
+		<s:Label x="46" y="28" text="服务器名称"/>
+		<s:Label x="46" y="84" text="IP"/>
+		<s:Label x="46" y="137" text="端口"/>
+		<s:TextInput id="servername" x="141" y="28" width="203" prompt="输入服务器名称"/>
+		<s:TextInput id="ip" x="141" y="82" width="203" prompt="输入ip"/>
+		<s:TextInput id="port" x="141" y="134" width="203"  prompt="输入端口"/>
+		<s:Label x="46" y="303" width="48" text="运营商"/>
+		<mx:ComboBox id="buissnesser" x="141" y="294" height="25" selectedIndex="-1" closeDuration="300" openDuration="300" minWidth="160"/>
+		<s:Label x="345" y="28" color="#FF0202" text="*"/>
+		<s:Label x="347" y="83" color="#FF0101" text="*"/>
+		<s:Label x="345" y="134" color="#FF0000" text="*"/>
+		<s:Label x="303" y="292" color="#FF0000" text="*"/>
+		<s:Label x="46" y="194" text="数库据用户"/>
+		<s:TextInput id="dbuser" x="141" y="189" width="203" prompt="输入数据库用户"/>
+		<s:Label x="346" y="189" color="#FF0404" text="*"/>
+		<s:Label x="46" y="246" text="数据库密码"/>
+		<s:TextInput id="dbpwd" x="141" y="241" width="203" prompt="输入数据库密码" displayAsPassword="true"/>
+		<s:Label x="346" y="241" color="#FF0101" text="*"/>
+		<s:Label x="46" y="350" text="状态"/>
+		<mx:ComboBox id="status" x="140" y="343" height="25" minWidth="160" closeDuration="300"
+					 openDuration="300" selectedIndex="-1"/>
+		<s:Label x="303" y="343" color="#FB0303" text="*"/>
+		<s:Label x="46" y="395" text="动态数据库名"/>
+		<s:TextInput x="141" y="390" width="159" id="dynamic_dbname"/>
+		<s:Label x="303" y="392" color="#FF0000" text="*"/>
+		<s:TextInput x="422" y="28" width="218" id="server_ip"/>
+		<s:Label x="365" y="31" text="服务器IP"/>
+		<s:Label x="645" y="31" color="#FF0101" text="*"/>
+		<s:TextInput x="430" y="81" width="218" id="server_port"/>
+		<s:Label x="365" y="83" text="服务器端口"/>
+		<s:Label x="650" y="81" color="#FF0000" text="*"/>
+		<s:Label x="365" y="134" text="服务器唯一标识"/>
+		<s:TextInput id="sid" x="457" y="131" prompt="仅限数字" restrict="0-9"/>
+		<s:Label x="588" y="132" color="#F71100" text="*"/>
+	</s:Panel>
+</s:Module>

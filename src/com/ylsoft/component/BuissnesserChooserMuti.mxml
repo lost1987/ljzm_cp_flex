@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+		 xmlns:component="com.ylsoft.component.*"
+		 width="100%" height="100%">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.event.AppEvent;
+			import com.ylsoft.module.data.synthesis_list;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.core.FlexGlobals;
+			import mx.events.CalendarLayoutChangeEvent;
+			import mx.events.CloseEvent;
+			import mx.events.DataGridEvent;
+			import mx.events.ListEvent;
+			import mx.managers.PopUpManager;
+			import mx.utils.ObjectUtil;
+			
+			private var _amf:Amf;
+			private var _allServers:ArrayCollection = new ArrayCollection;//预加载的所有servers 用来对比的对象
+			private var _copyServers : ArrayCollection;//用来增减的clone对象
+			private var _selectedServers:ArrayCollection = new ArrayCollection;//当前被选中的servers
+			private var _server_selected:Object = new Object;//右边dg当前被选中的server
+			private var _buinesser_selected:Object = new Object;//当前被选中的单个运营商
+			private var _selected_right_servers:ArrayCollection = new ArrayCollection;//右边被选中的servers
+			private var _isbuissnessCheckStateChange:Boolean = false;//记录选中状态是否真实改变
+			
+			private  function init():void{
+				_amf = new Amf();
+				this.lock();
+				
+				//监听datagrid选中事件的状态改变
+				this.cd_buissnesser.isDispatchCheckStateChange = true;
+				this.cd_buissnesser.dg.addEventListener(AppEvent.CHKDATAGRID_CHECKED_CHANGE,buissnesserChecked);
+				
+				var column_buissnesser : DataGridColumn = new DataGridColumn();
+				column_buissnesser.dataField = 'name';
+				column_buissnesser.headerText = '运营商';
+				cd_buissnesser.dg.columns = cd_buissnesser.dg.columns.concat(new Array(column_buissnesser));
+				
+				var column_server : DataGridColumn = new DataGridColumn();
+				column_server.dataField = 'name';
+				column_server.headerText = '服务器';
+				cd_server.dg.columns = cd_server.dg.columns.concat(new Array(column_server));
+				
+				var column_server1 : DataGridColumn = new DataGridColumn();
+				column_server1.dataField = 'status';
+				column_server1.headerText = '开启';
+				cd_server.dg.columns = cd_server.dg.columns.concat(new Array(column_server1));
+				
+				if(AppConfig.buissnesser!=null){
+					this.cd_buissnesser.initData(AppConfig.buissnesser);
+					
+					_amf.setFaultMessage('无法获取服务器列表');
+					_amf.registerCallBack(setAllServers);
+					_amf.startService('serverService','getServersByBids',AppConfig.buissnesser.toArray());
+				}
+				
+				this.parent.addEventListener(KeyboardEvent.KEY_UP,cancelHandler);
+			}
+			
+			protected function titlewindow_closeHandler(event:CloseEvent):void
+			{
+				// TODO Auto-generated method stub
+				this.parent.removeEventListener(KeyboardEvent.KEY_UP,cancelHandler);
+				PopUpManager.removePopUp(this);
+			}
+			
+			private function setAllServers(evt:AppEvent):void{
+				this._allServers = new ArrayCollection(_amf.getResult() as Array);
+				this._copyServers =  new ArrayCollection(Toolkit.clone(_allServers.source));
+			    this.unlock();
+				this.cd_buissnesser.dg.addEventListener(ListEvent.ITEM_CLICK,setServersByBuissnesser);
+				this.cd_server.dg.addEventListener(ListEvent.ITEM_CLICK,setServers);
+				this.cd_buissnesser.itemsControll = checkAll_buissnessers;
+				this.cd_server.itemsControll = checkAll_servers;
+			} 
+			
+			private function parentInitData():void{
+				FlexGlobals.topLevelApplication.main_right.getElementAt(0).servers = this._selectedServers;
+				FlexGlobals.topLevelApplication.main_right.getElementAt(0).servercount.text = this._selectedServers.length.toString();
+				FlexGlobals.topLevelApplication.main_right.getElementAt(0).dispatchEvent(new AppEvent(AppEvent.BUISSNESSER_CHOOSE_COMPLETE));
+				this.cd_buissnesser.dg.removeEventListener(ListEvent.ITEM_CLICK,setServersByBuissnesser);
+				this.cd_server.dg.removeEventListener(ListEvent.ITEM_CLICK,setServers);
+				tw.dispatchEvent(new CloseEvent(CloseEvent.CLOSE));
+			}
+			
+			private function clear():void{
+				 for each(var o:Object in this.cd_buissnesser.dg.dataProvider){
+					 o._select = false;
+				 }
+				 for each(o in this.cd_server.dg.dataProvider){
+					 o._select = false;
+				 }
+				 _selectedServers = new ArrayCollection;//当前被选中的servers
+				 _server_selected = new Object;//右边dg当前被选中的server
+				 _buinesser_selected = new Object;//当前被选中的单个运营商
+				 _selected_right_servers = new ArrayCollection;//右边被选中的servers
+				 this.cd_buissnesser.dg.invalidateList();
+				 this.cd_server.dg.invalidateList();
+				 this.updateDisplay();
+			}
+			
+			private function lock():void{
+				this.cd_buissnesser.enabled = false;
+				this.cd_server.enabled = false;
+			}
+			
+			private function unlock():void{
+				this.cd_buissnesser.enabled = true;
+				this.cd_server.enabled = true;
+			}
+			
+			private function buissnesserChecked(evt:AppEvent):void{
+				this._isbuissnessCheckStateChange = true;
+			}
+			
+			//运营商选中事件触发
+			private function setServersByBuissnesser(evt:ListEvent):void{
+				_copyServers = new ArrayCollection(Toolkit.clone(this._allServers.source));
+				//Alert.show(this._selectedServers.length.toString());
+				//Alert.show(this._isbuissnessCheckStateChange.toString());
+				_buinesser_selected = this.cd_buissnesser.dg.selectedItem!=null ? this.cd_buissnesser.dg.selectedItem : this.cd_buissnesser.selecteditem;
+				var temp:ArrayCollection = new ArrayCollection;
+				for each(var obj:Object in _copyServers){
+					if(obj.bid == this._buinesser_selected.id){
+						temp.addItem(obj);
+					}
+				}
+				this.cd_server.initData(temp);
+				for each(obj in temp){
+					if(is_exsit_selected_servers(obj.id,this._selectedServers)){
+						obj._select = true;
+					}
+				}
+				
+				if(_buinesser_selected._select){
+					for each(obj in temp){
+						obj._select = true;
+						if(!is_exsit_selected_servers(obj.id,this._selectedServers)){
+							this._selectedServers.addItem(obj);
+						}
+					}
+					this._isbuissnessCheckStateChange = false;
+				}else{
+					for each(obj in temp){
+						if(is_exsit_selected_servers(obj.id,_selectedServers)){
+							if(this._isbuissnessCheckStateChange == true){
+								for(var i:int = 0;i<_selectedServers.length;i++){
+									if(obj.id == _selectedServers.getItemAt(i).id){
+										obj._select = false;
+										_selectedServers.removeItemAt(i);
+									}
+								}
+								this._isbuissnessCheckStateChange = false;
+							}else{
+								for( i = 0;i<_selectedServers.length;i++){
+										if(obj.id != _selectedServers.getItemAt(i).id){
+											obj._select = false;
+										}else{
+											obj._select = true;
+										}
+								}
+							}
+						}
+					}
+				}
+				
+				for each(obj in temp){
+					if(is_exsit_selected_servers(obj.id,_selected_right_servers)){
+						obj._select = true;
+						if(!is_exsit_selected_servers(obj.id,_selectedServers)){
+							_selectedServers.addItem(obj);
+						}
+					}
+				}
+				
+				this.cd_server.dg.invalidateList();
+			}
+			
+			//点击右边服务器选项触发
+			private function setServers(evt:ListEvent):void{
+				_server_selected = this.cd_server.dg.selectedItem!=null ? this.cd_server.dg.selectedItem : this.cd_server.selecteditem;
+				if(_server_selected._select){
+					  if(!is_exsit_selected_servers(_server_selected.id,_selectedServers)){
+						  _selectedServers.addItem(_server_selected);
+						  _selected_right_servers.addItem(_server_selected);
+					  }
+				}else{
+					if(is_exsit_selected_servers(_server_selected.id,_selectedServers)){
+						var bid:String;
+						for(var i : int = 0; i<  _selectedServers.length ; i++){
+							if(_selectedServers.getItemAt(i).id == _server_selected.id){
+								bid = _selectedServers.getItemAt(i).bid;
+							 	_selectedServers.removeItemAt(i);
+								break;
+							}
+						}
+						
+						//将运营商反选为不打勾
+						for each(var obj:Object in this.cd_buissnesser.dg.dataProvider){
+							if(obj.id == bid){
+								obj._select = false;
+								this.cd_buissnesser.dg.invalidateList();
+								break;
+							}
+						}
+					}
+					
+					if(is_exsit_selected_servers(_server_selected.id,_selectedServers)){
+							for(i ; i< _selected_right_servers.length;i++){
+								if(_selected_right_servers.getItemAt(i).id == _server_selected.id){
+									_selected_right_servers.removeItemAt(i);break;
+								}
+							}
+					}
+				}
+			}
+			
+			private function checkAll_buissnessers(obj:Object):void{
+					if(obj.chxBoxAll.selected){
+						this._selectedServers = this._copyServers;
+						for each(var obj:Object in this._selectedServers){
+							obj._select = true;
+						}
+					}else{
+						this._selectedServers = new ArrayCollection;
+						this.btn_clear.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+					}
+					this.updateDisplay();
+			}
+			
+			private function checkAll_servers(objc:Object):void{
+				_buinesser_selected = this.cd_buissnesser.dg.selectedItem!=null ? this.cd_buissnesser.dg.selectedItem : this.cd_buissnesser.selecteditem;	
+				var temp:ArrayCollection = new ArrayCollection;
+				for each(var obj:Object in _copyServers){
+					if(obj.bid == this._buinesser_selected.id){
+						temp.addItem(obj);
+					}
+				}
+				
+				if(objc.chxBoxAll.selected){
+					for each(obj in temp){
+						if(!is_exsit_selected_servers(obj.id,_selectedServers)){
+							_selectedServers.addItem(obj);
+							_selected_right_servers.addItem(obj);
+						}
+						obj._select = true;
+					}
+				}else{
+					for each(obj in temp){
+						if(is_exsit_selected_servers(obj.id,_selectedServers)){
+							for(var i:int = 0 ; i< _selectedServers.length;i++){
+								if(_selectedServers.getItemAt(i).id == obj.id){
+									_selectedServers.removeItemAt(i);break;
+								}
+							}
+						}
+						
+						if(is_exsit_selected_servers(obj.id,_selected_right_servers)){
+							for( i = 0 ; i< _selected_right_servers.length;i++){
+								if(_selected_right_servers.getItemAt(i).id == obj.id){
+									_selected_right_servers.removeItemAt(i);break;
+								}
+							}
+						}
+						
+						obj._select = false;
+					}
+				}
+				this.updateDisplay();
+			}
+			
+			private function is_exsit_selected_servers(id:String,selectedServers:ArrayCollection):Boolean{
+				  for(var i:int =0 ; i< selectedServers.length; i++){
+					  if(id == selectedServers.getItemAt(i).id){
+						  return true;
+					  }
+				  }
+				  return false;
+			}
+			
+			private function updateDisplay():void{
+				this.cd_buissnesser.dg.invalidateList();
+				this.cd_server.dg.invalidateList();
+			}
+			
+			private function cancelHandler(evt:KeyboardEvent):void{
+				if(evt.keyCode == 27){
+					this.parent.removeEventListener(KeyboardEvent.KEY_UP,cancelHandler);
+					PopUpManager.removePopUp(this);
+				}
+			}
+		]]>
+	</fx:Script>
+	<s:TitleWindow width="100%" height="100%" id="tw" close="titlewindow_closeHandler(event)" title="选择运营商和服务器" >
+		<s:VGroup x="0" y="0" width="100%" height="100%">
+			<s:Group width="100%" height="90%">
+				<s:HGroup x="0" y="0" width="100%" height="100%">
+					<component:CB_Datagrid width="50%" id="cd_buissnesser">
+					</component:CB_Datagrid>
+					<component:CB_Datagrid width="50%" id="cd_server">
+					</component:CB_Datagrid>
+				</s:HGroup>
+			</s:Group>
+			<s:Group width="100%" height="10%">
+				<s:Button id="btn_clear" left="10" label="清除" verticalCenter="0" click="clear()"/>
+				<s:Button id="btn_confirm" right="10" label="确定" verticalCenter="0" click="parentInitData()"/>
+			</s:Group>
+		</s:VGroup>
+	</s:TitleWindow>
+</s:Group>

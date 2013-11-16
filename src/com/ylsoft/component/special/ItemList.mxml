@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.events.CloseEvent;
+			import mx.events.ItemClickEvent;
+			import mx.events.ListEvent;
+			import mx.managers.PopUpManager;
+			public function init(data:ArrayCollection):void{
+				var col1 : DataGridColumn = new DataGridColumn();
+				col1.dataField = 'id';
+				col1.headerText = 'ID';
+				
+				var col2 : DataGridColumn = new DataGridColumn();
+				col2.dataField = 'name';
+				col2.headerText = '名称';
+				
+				dg.columns = dg.columns.concat(new Array(col1,col2));
+				
+				this.dg.dataProvider = data;
+			}
+			
+			protected function titlewindow1_closeHandler(event:CloseEvent):void
+			{
+				// TODO Auto-generated method stub
+				PopUpManager.removePopUp(this);
+			}
+			
+			private function search():void{
+				if(this.itemName.text.replace(/\s+/g,'') == ''){
+					(this.dg.dataProvider as ArrayCollection).filterFunction = null;
+				}else{
+					(this.dg.dataProvider as ArrayCollection).filterFunction = checkName;
+				}
+				(this.dg.dataProvider as ArrayCollection).refresh();
+			}
+			
+			private function checkName(item:Object):Boolean{
+				var name : String = this.itemName.text.replace(/\s+/g,'');
+				if(item.name.indexOf(name) == -1){
+					return false;
+				}
+				return true;
+			}
+			
+			private function clear():void{
+				(this.dg.dataProvider as ArrayCollection).filterFunction = null;
+				(this.dg.dataProvider as ArrayCollection).refresh();
+				this.itemName.text = '';
+			}
+			
+			private function copyItemID(evt:ListEvent):void{
+				var item : Object = evt.target.selectedItem;
+				System.setClipboard(item.id);
+			}
+		]]>
+	</fx:Script>
+	<s:TitleWindow x="0" y="0" width="100%" height="100%" title="物品详细" close="titlewindow1_closeHandler(event)">
+		<s:VGroup width="100%" height="100%">
+			<s:Group width="100%" height="50">
+				<s:Label x="5" y="13" width="51" height="20" paddingTop="0" text="物品名称"/>
+				<mx:TextInput id="itemName" x="75" y="9"/>
+				<s:Button x="254" y="10" label="查询" click="search()" buttonMode="true"/>
+				<s:Button x="343" y="10" label="清空" click="clear()" buttonMode="true"/>
+				<s:Label x="432" y="19" width="169" color="#1D109F" text="双击单元格可以复制ID"/>
+			</s:Group>
+		<mx:DataGrid id="dg" x="0" y="0" width="100%" height="100%" borderVisible="false" doubleClickEnabled="true" itemDoubleClick="copyItemID(event)">
+		</mx:DataGrid>
+		</s:VGroup>
+	</s:TitleWindow>
+</s:Group>

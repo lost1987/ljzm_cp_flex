@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 width="100%" height="5%" color="#FEFEFE">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Pagelimit;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.controls.Alert;
+			import mx.core.IVisualElementContainer;
+			
+			public var currentPage:Number = 1;
+			
+			public var amf:Amf;
+			
+			public var service:String;
+			
+			public var method:String;
+			
+			public var methodTotal:String;
+			
+			public var page:Pagelimit = new Pagelimit();
+			
+			public var container:Object;
+			
+			public var condition:Object;
+			
+			public var is_total_exec:Boolean = false;//保证分页的总数只初始化一次 不然按钮会在initTotal 的回调中初始化 状态保存不了
+			
+			public function initTotal():void{
+				if(!is_total_exec){
+					this.pagenum.text = '1';
+					this.currentPage = 1;
+					amf = new Amf();
+					amf.registerCallBack(setTotal);
+				    amf.startService(this.service,this.methodTotal,condition);
+					this._prev.enabled = false;
+				}
+			}
+			
+			private function pageNext(evt:MouseEvent):void{
+				currentPage++;
+				if(currentPage*AppConfig.PAGECOUNT >= Number(total.text))this._next.enabled=false;
+				else this._next.enabled=true;
+				this._prev.enabled = true;
+				this.pagenum.text = currentPage.toString();
+				switch(AppConfig.DBTYPE){
+					case 'mssql' : page.start = (currentPage -1) * AppConfig.PAGECOUNT;
+								   page.limit = AppConfig.PAGECOUNT*currentPage;
+								   break;
+					case 'mysql' : page.start = (currentPage -1) * AppConfig.PAGECOUNT;
+								   page.limit = AppConfig.PAGECOUNT;
+								   break;
+				}
+				
+				amf.registerCallBack(this.container.initDataGrid);
+				amf.startService(service,method,page,condition);
+			}
+			
+			private function pagePrev(evt:MouseEvent):void{
+				currentPage--;
+				if(currentPage == 1)this._prev.enabled=false;
+				else this._prev.enabled=true;
+				this._next.enabled = true;
+				this.pagenum.text = currentPage.toString();
+
+				switch(AppConfig.DBTYPE){
+					case 'mssql' : 	page.start = (currentPage -1) * AppConfig.PAGECOUNT;
+									page.limit = AppConfig.PAGECOUNT*currentPage;
+									break;
+					case 'mysql' :  page.start = (currentPage -1) * AppConfig.PAGECOUNT;
+									page.limit = AppConfig.PAGECOUNT;
+									break;
+				}
+				amf.registerCallBack(this.container.initDataGrid);
+				amf.startService(service,method,page,condition);
+			}
+			
+			private function pageGoto(evt:MouseEvent):void{
+				if(_goto.text != ''  && Number(_goto.text)>0){
+					var _currentPage:Number = Number(this._goto.text);
+					if((_currentPage-1)*AppConfig.PAGECOUNT >= Number(total.text)  || _currentPage==0)return;
+					if(_currentPage == 1)this._prev.enabled=false;
+					else this._prev.enabled=true;
+					if(_currentPage*AppConfig.PAGECOUNT - Number(total.text) >= 0 &&
+						_currentPage*AppConfig.PAGECOUNT - Number(total.text) < AppConfig.PAGECOUNT)this._next.enabled=false;
+					else this._next.enabled=true;
+					
+					this.pagenum.text = _currentPage.toString();
+					switch(AppConfig.DBTYPE){
+						case 'mssql' : 	page.start = (_currentPage -1) * AppConfig.PAGECOUNT;
+							page.limit = AppConfig.PAGECOUNT*currentPage;
+							break;
+						case 'mysql' :  page.start = (_currentPage -1) * AppConfig.PAGECOUNT;
+							page.limit = AppConfig.PAGECOUNT;
+							break;
+					}
+					
+					amf.registerCallBack(this.container.initDataGrid);
+					amf.startService(service,method,page,condition);
+					currentPage = _currentPage;
+					_goto.text = '';
+				}
+			}
+			
+			private function pageFirst(evt:MouseEvent):void{
+				this._goto.text = '1';
+				_goto_btn.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+			}
+			
+			private function pageLast(evt:MouseEvent):void{
+				if(Number(total.text)%AppConfig.PAGECOUNT == 0)
+					this._goto.text = Math.floor(Number(total.text)/AppConfig.PAGECOUNT).toString();
+				else
+					this._goto.text = (Math.floor(Number(total.text)/AppConfig.PAGECOUNT)+1).toString();
+				_goto_btn.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+				
+			}
+			
+			private function setTotal(evt:AppEvent):void{
+				is_total_exec = true;
+				_first.enabled = true;
+				_next.enabled = true;
+				_last.enabled = true;
+				_goto_btn.enabled = true;
+				
+				this.total.text = amf.getResult().toString();
+				if(Number(amf.getResult()) < AppConfig.PAGECOUNT){
+					this._next.enabled=false;
+					this._first.enabled = false;
+					this._last.enabled = false;
+					this._goto_btn.enabled = false;
+				}
+			}
+		]]>
+	</fx:Script>
+
+	<s:BorderContainer width="100%" height="100%" borderVisible="false" backgroundColor="#05367E">
+		<s:HGroup y="0" right="10" width="358" height="100%">
+			<mx:LinkButton height="100%" label="首页" id="_first" color="#FFFFFF" enabled="false" click="pageFirst(event)"/>
+			<mx:VRule height="100%"/>
+			<mx:LinkButton height="100%" label="上一页" id="_prev" color="#FFFFFF" enabled="false" click="pagePrev(event)"/>
+			<mx:VRule height="100%"/>
+			<mx:LinkButton height="100%" label="下一页" id="_next" color="#FFFFFF"  enabled="false" click="pageNext(event)"/>
+			<mx:VRule height="100%"/>
+			<mx:LinkButton height="100%" label="末页" id="_last" color="#FFFFFF" enabled="false" click="pageLast(event)"/>
+			<s:TextInput id="_goto" width="41" height="100%" borderVisible="true" color="#0F0E0E" restrict="0-9"/>
+			<mx:LinkButton height="100%" label="跳转" enabled="false" id="_goto_btn" color="#FFFFFF" click="pageGoto(event)"/>
+		</s:HGroup>
+		<s:Label left="10" color="#FFFFFF" text="共" verticalCenter="-1"/>
+		<s:Label id="total" left="21" width="68" color="#55FF01" verticalCenter="1" textAlign="center"/>
+		<s:Label left="88" color="#FFFFFF" text="条" verticalCenter="0"/>
+		<s:Label left="120" color="#FBFBFB" text="第" verticalCenter="-1"/>
+		<s:Label id="pagenum" left="135" width="60" color="#55FF01" text="1" verticalCenter="1" textAlign="center"/>
+		<s:Label left="199" text="页" verticalCenter="-1"/>
+	</s:BorderContainer>
+</s:Group>

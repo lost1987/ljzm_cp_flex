@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			
+			import ronco.bbxq.ObjAni;
+			
+			public var codelist:ArrayCollection;
+			private var amf:Amf;
+			
+			protected function titlewindow1_closeHandler(event:CloseEvent):void
+			{
+				// TODO Auto-generated method stub
+				PopUpManager.removePopUp(this);
+			}
+			
+			public function init():void{
+				if(codelist == null)return;
+				this.fetchItemsInfo();
+			}
+			
+			private function fetchItemsInfo():void{
+				var server:Object = this.codelist.getItemAt(0).server;
+				amf = new Amf();
+				amf.setFaultMessage('无法读取物品列表');
+				amf.registerCallBack(setDetail);
+				amf.startService('itemService','lists',server);
+			}
+			
+			private function setDetail(evt:AppEvent):void{
+				var itemlist:ArrayCollection = new ArrayCollection(amf.getResult() as Array);
+				var codestr : String = '';
+				for each(var data:Object in codelist){
+					codestr += data.acode + '\r';
+				}
+				this.content.text = codestr;
+				
+				var codeitem:Object = this.codelist.getItemAt(0); 
+				if(codeitem.itemid0 != 0){
+					var item1:Object = Toolkit.getObjectFromCollectionByProperty('id',codeitem.itemid0,itemlist);
+					if(item1!=null)this.itemname1.text = item1.name+' x '+codeitem.nums0;
+				}
+				
+				if(codeitem.itemid1 != 0){
+					var item2:Object = Toolkit.getObjectFromCollectionByProperty('id',codeitem.itemid1,itemlist);
+					if(item2!=null)this.itemname2.text = item2.name+' x '+codeitem.nums1;
+				}
+				
+				if(codeitem.itemid2 != 0){
+					var item3:Object = Toolkit.getObjectFromCollectionByProperty('id',codeitem.itemid2,itemlist);
+					if(item3!=null)this.itemname3.text = item3.name+' x '+codeitem.nums2;
+				}
+				
+				if(codeitem.itemid3 != 0){
+					var item4:Object = Toolkit.getObjectFromCollectionByProperty('id',codeitem.itemid3,itemlist);
+					if(item4!=null)this.itemname4.text = item4.name+' x '+codeitem.nums3;
+				}
+				
+				if(codeitem.itemid4 != 0){
+					var item5:Object = Toolkit.getObjectFromCollectionByProperty('id',codeitem.itemid4,itemlist);
+					if(item5!=null)this.itemname5.text = item5.name+' x '+codeitem.nums4;
+				}
+				
+				if(codeitem.itemid5 != 0){
+					var item6:Object = Toolkit.getObjectFromCollectionByProperty('id',codeitem.itemid5,itemlist);
+					if(item6!=null)this.itemname6.text = item6.name+' x '+codeitem.nums5;
+				}
+				
+				if(codeitem.itemid6 != 0){
+					var item7:Object = Toolkit.getObjectFromCollectionByProperty('id',codeitem.itemid6,itemlist);
+					if(item7!=null)this.itemname7.text = item7.name+' x '+codeitem.nums6;
+				}
+				
+				if(codeitem.itemid7 != 0){
+					var item8:Object = Toolkit.getObjectFromCollectionByProperty('id',codeitem.itemid7,itemlist);
+					if(item8!=null)this.itemname8.text = item8.name+' x '+codeitem.nums7;
+				}
+				
+				this.amask.text = codeitem.amask;
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:TitleWindow x="0" y="0" width="100%" height="100%" close="titlewindow1_closeHandler(event)">
+		<s:HGroup width="100%" height="100%">
+			<mx:TextArea id="content" width="60%" height="98%" borderVisible="false"
+						 dropShadowVisible="true" editable="false" paddingLeft="10" paddingTop="10"/>
+			<s:Form width="310" height="100%">
+				<s:layout>
+					<s:VerticalLayout paddingTop="0"/>
+				</s:layout>
+				<s:FormItem width="293" label="物品1">
+					<s:layout>
+						<s:HorizontalLayout paddingLeft="20" verticalAlign="middle"/>
+					</s:layout>
+					<s:Label id="itemname1" width="223" color="#0B7100" paddingLeft="0"/>
+				</s:FormItem>
+				<s:FormItem width="293" label="物品2">
+					<s:layout>
+						<s:HorizontalLayout paddingLeft="20" verticalAlign="middle"/>
+					</s:layout>
+					<s:Label id="itemname2" width="223" color="#0B7100"/>
+				</s:FormItem>
+				<s:FormItem width="294" label="物品3">
+					<s:layout>
+						<s:HorizontalLayout paddingLeft="20" verticalAlign="middle"/>
+					</s:layout>
+					<s:Label id="itemname3" width="224" color="#0B7100"/>
+				</s:FormItem>
+				<s:FormItem width="295" label="物品4">
+					<s:layout>
+						<s:HorizontalLayout paddingLeft="20" verticalAlign="middle"/>
+					</s:layout>
+					<s:Label id="itemname4" width="224" color="#0B7100"/>
+				</s:FormItem>
+				<s:FormItem width="296" label="物品5">
+					<s:layout>
+						<s:HorizontalLayout paddingLeft="20" verticalAlign="middle"/>
+					</s:layout>
+					<s:Label id="itemname5" width="227" color="#0B7100"/>
+				</s:FormItem>
+				<s:FormItem width="295" label="物品6">
+					<s:layout>
+						<s:HorizontalLayout paddingLeft="20" verticalAlign="middle"/>
+					</s:layout>
+					<s:Label id="itemname6" width="227" color="#0B7100"/>
+				</s:FormItem>
+				<s:FormItem width="294" label="物品7">
+					<s:layout>
+						<s:HorizontalLayout paddingLeft="20" verticalAlign="middle"/>
+					</s:layout>
+					<s:Label id="itemname7" width="225" color="#0B7100"/>
+				</s:FormItem>
+				<s:FormItem width="295" label="物品8">
+					<s:layout>
+						<s:HorizontalLayout paddingLeft="20" verticalAlign="middle"/>
+					</s:layout>
+					<s:Label id="itemname8" width="229" color="#0B7100"/>
+				</s:FormItem>
+				<s:FormItem width="292" label="掩码">
+					<s:layout>
+						<s:HorizontalLayout paddingLeft="20" verticalAlign="middle"/>
+					</s:layout>
+					<s:Label id="amask"/>
+				</s:FormItem>
+			</s:Form>
+		</s:HGroup>
+	</s:TitleWindow>
+</s:Group>

@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:common="com.ylsoft.common.*"
+		  xmlns:component="com.ylsoft.component.*"
+		  width="100%" height="100%" creationComplete="init(event)">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.common.XWindow;
+			import com.ylsoft.component.BuissnesserChooserMuti;
+			import com.ylsoft.component.FormBottom;
+			import com.ylsoft.component.special.ItemList;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.managers.PopUpManager;
+			
+			private var amf:Amf;
+			private var _amf:Amf;
+			private var listModule:String = 'sys/activecode_list';
+			private var editModule:String = 'sys/activecode_add';
+
+			
+			/****表单属性*****/
+			
+			public var servers:ArrayCollection = new ArrayCollection;
+			
+			/*****表单对象****/
+			private var formObj:Object;
+			
+			private function init(evt:Event):void{
+				/*****通用方法*****/
+				FlexGlobals.topLevelApplication.form_return.enabled=true;
+				FlexGlobals.topLevelApplication.form_return.addEventListener(MouseEvent.CLICK,returnTable);//定义返回列表方法
+				fb.save_btn.enabled = false;
+				fb.save_btn.addEventListener(MouseEvent.CLICK,save);
+				
+				//监听运营商服务器选择事件
+				this.addEventListener(AppEvent.BUISSNESSER_CHOOSE_COMPLETE,buissnesserChooserComplete);
+				
+				/*******单独方法********/
+				if(AppConfig.formoperation == AppConfig.FORMADD){
+					this.panel.title = "生成礼包验证码";
+					this.fb.save_btn.label = "生成";
+				}
+				
+				//抓取物品列表
+				
+			}
+			
+			private function returnTable(evt:MouseEvent):void{
+				FlexGlobals.topLevelApplication.main_right.removeAllElements();
+				ModuleGlobal.Modulefactory_main = new ModuleFactory();
+				ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+				ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+				AppConfig.formoperation = null;	
+				FlexGlobals.topLevelApplication.form_return.removeEventListener(MouseEvent.CLICK,returnTable);
+			}
+			
+			private function formvalidate():Boolean{
+				return true;
+			}
+			
+			private function save(evt:MouseEvent):void{
+				
+				if(this.formvalidate() == false)return;
+				
+				formObj = new Object();
+				formObj.name = this.aname.text;
+				formObj.id1 = this.id1.text;
+				formObj.id2 = this.id2.text;
+				formObj.id3 = this.id3.text;
+				formObj.id4 = this.id4.text;
+				formObj.id5 = this.id5.text;
+				formObj.id6 = this.id6.text;
+				formObj.id7 = this.id7.text;
+				formObj.id8 = this.id8.text;
+				
+				formObj.num1 = this.num1.text;
+				formObj.num2 = this.num2.text;
+				formObj.num3 = this.num3.text;
+				formObj.num4 = this.num4.text;
+				formObj.num5 = this.num5.text;
+				formObj.num6 = this.num6.text;
+				formObj.num7 = this.num7.text;
+				formObj.num8 = this.num8.text;	
+				
+				formObj.servers = this.servers.source;
+				formObj.astate = 1;
+				formObj.amask = this.amask.value;
+				formObj.nums = this.nums.value;
+				formObj.admin = AppConfig.admin;
+				
+				if(AppConfig.formoperation == AppConfig.FORMEDIT){
+					formObj.id = AppConfig.formid;
+				}
+				
+				amf = new Amf();
+				amf.registerCallBack(saveComplete);
+				amf.startService('activecodeService','save',formObj);
+			}
+			
+			private function saveComplete(evt:AppEvent):void{
+				var result:Number = amf.getResult() as Number;
+				if(!result){
+					FlexGlobals.topLevelApplication.main_right.removeAllElements();
+					ModuleGlobal.Modulefactory_main = new ModuleFactory();
+					ModuleGlobal.Modulefactory_main.setProgress(UIProgressBar.getInstance());
+					ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+					ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+					AppConfig.formoperation = null;	
+					AppConfig.formid = 0;
+					Alert.show('操作成功');
+					return;
+				}else{
+					Alert.show('操作失败,物品'+result.toString()+'的ID错误');
+				}
+			}
+			
+			private function buissnesserChooser():void{
+				var bc : BuissnesserChooserMuti = new BuissnesserChooserMuti();
+				bc.width = 800;
+				bc.height = 400;
+				XWindow.getInstance().addWindow(bc,this).show();
+			}
+			
+			private function buissnesserChooserComplete(evt:AppEvent):void{
+				if(this.servers.length > 0 && amask.value >1 && amask.value < 31 && nums.value > 0 && nums.value<10001){
+					this.fb.save_btn.enabled = true;
+					return;
+				}
+				this.fb.save_btn.enabled = false;
+			}
+			
+			private function checkEnabled():void{
+				if(this.servers.length > 0 && amask.value >1 && amask.value < 31 && nums.value > 0 && nums.value<10001){
+					this.fb.save_btn.enabled = true;
+					return;
+				}
+				this.fb.save_btn.enabled = false;
+			}
+			
+			private function itemsList():void{
+				if(this.servers.length == 0){
+					Alert.show('请选择服务器');return;
+				}
+				amf = new Amf;
+				//amf.setFaultMessage('无法读取物品列表');
+				amf.registerCallBack(itemslistHandler);
+				amf.startService('itemService','lists',this.servers.getItemAt(0));
+			}
+			
+			private function itemslistHandler(evt:AppEvent):void{
+				var items:ArrayCollection = new ArrayCollection(amf.getResult() as Array);
+				var itemlist : ItemList = new ItemList();
+				itemlist.width = 800;
+				itemlist.height = 400;
+				XWindow.getInstance().addWindow(itemlist,this).show();
+				itemlist.init(items);
+			}
+			
+			
+		]]>
+	</fx:Script>
+	<s:Panel id="panel" x="0" y="0" width="100%" height="100%" >
+		<s:Form x="0" y="0" width="100%" height="90%">
+			<s:layout>
+				<s:BasicLayout/>
+			</s:layout>
+			<s:FormItem x="10" y="10" width="463" label="服务器">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<mx:LinkButton label="浏览" click="buissnesserChooser()" color="#0872A9" fontSize="14"
+							   fontStyle="italic" fontWeight="bold" textDecoration="underline"/>
+				<s:Label height="13" color="#FC0101" text="*"/>
+				<s:Label text="已经选择"/>
+				<s:Label color="#FA0303" text="0" id="servercount"/>
+				<s:Label text="台服务器"/>
+				<mx:LinkButton  label="查看物品ID" fontStyle="italic" fontWeight="bold"
+							   textDecoration="underline" click="itemsList()"/>
+			</s:FormItem>
+			<s:FormItem x="10" y="340" width="342" label="礼包名称">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:TextInput id="aname" prompt="输入礼包的名称"/>
+				<s:Label color="#FF0000" text="*"/>
+			</s:FormItem>
+			<s:FormItem x="10" y="70" width="292" label="物品1">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:Label text="ID"/>
+				<s:TextInput id="id1" restrict="0-9"/>
+				<s:Label text="数量"/>
+				<s:TextInput width="41" id="num1" restrict="0-9"/>
+				<s:Label color="#FF0404" text="*"/>
+			</s:FormItem>
+			<s:FormItem x="322" y="70" width="289" label="物品2">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:Label text="ID" />
+				<s:TextInput id="id2" restrict="0-9"/>
+				<s:Label text="数量"/>
+				<s:TextInput width="41" id="num2" restrict="0-9"/>
+			</s:FormItem>
+			<s:FormItem x="11" y="117" width="287" label="物品3">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:Label text="ID" />
+				<s:TextInput id="id3" restrict="0-9"/>
+				<s:Label text="数量"/>
+				<s:TextInput width="41" id="num3" restrict="0-9"/>
+			</s:FormItem>
+			<s:FormItem x="323" y="117" width="288" label="物品4">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:Label text="ID"/>
+				<s:TextInput id="id4" restrict="0-9"/>
+				<s:Label text="数量"/>
+				<s:TextInput width="41" id="num4" restrict="0-9"/>
+			</s:FormItem>
+			<s:FormItem x="10" y="167" width="288" label="物品5">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle" />
+				</s:layout>
+				<s:Label text="ID" />
+				<s:TextInput id="id5" restrict="0-9"/>
+				<s:Label text="数量"/>
+				<s:TextInput width="41" id="num5" restrict="0-9"/>
+			</s:FormItem>
+			<s:FormItem x="323" y="165" width="290" label="物品6">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:Label text="ID" />
+				<s:TextInput id="id6" restrict="0-9"/>
+				<s:Label text="数量"/>
+				<s:TextInput width="41" id="num6" restrict="0-9"/>
+			</s:FormItem>
+			<s:FormItem x="10" y="217" width="288" label="物品7">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:Label text="ID"/>
+				<s:TextInput id="id7" restrict="0-9"/>
+				<s:Label text="数量"/>
+				<s:TextInput width="41" id="num7" restrict="0-9"/>
+			</s:FormItem>
+			<s:FormItem x="323" y="213" width="290" label="物品8">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:Label text="ID"/>
+				<s:TextInput id="id8" restrict="0-9"/>
+				<s:Label text="数量"/>
+				<s:TextInput width="41" id="num8" restrict="0-9"/>
+			</s:FormItem>
+			<s:FormItem x="219" y="281" label="掩码">
+				<mx:NumericStepper id="amask" maximum="30" minimum="2" change="checkEnabled()" />
+			</s:FormItem>
+			<s:FormItem x="11" y="281" width="178" label="数量">
+				<s:helpContent>
+					<s:VGroup>
+						<s:Label text="最多2000个"></s:Label>
+					</s:VGroup>
+				</s:helpContent>
+				<s:NumericStepper id="nums" width="53" maximum="2000"  minimum="1" change="checkEnabled()"/>
+			</s:FormItem>
+		</s:Form>
+		<component:FormBottom id="fb" x="0" y="524">
+		</component:FormBottom>
+	</s:Panel>
+</s:Module>

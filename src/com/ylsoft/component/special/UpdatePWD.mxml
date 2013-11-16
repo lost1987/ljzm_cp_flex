@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark"  creationComplete="init()"
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			private var amf:Amf;
+			
+			protected function titlewindow1_closeHandler(event:CloseEvent):void
+			{
+				// TODO Auto-generated method stub
+				PopUpManager.removePopUp(this);
+			}
+			
+			private function init():void{}
+			
+			private function submit():void{
+				var oldpwd :String = Toolkit.blankClear(this.old_pwd.text);
+				var newpwd:String = Toolkit.blankClear(this.new_pwd.text);
+				var repwd :String = Toolkit.blankClear(this.re_pwd.text);
+				
+				if(oldpwd != '' && newpwd != '' && repwd==newpwd && newpwd.length >= 6){
+					
+					var pwd:Object = new Object;
+					pwd.oldpwd = oldpwd;
+					pwd.newpwd = newpwd;
+					
+					amf = new Amf;
+					amf.setFaultMessage('服务端错误');
+					amf.registerCallBack(updateComplete);
+					amf.startService('adminService','updatePWD',AppConfig.admin,pwd);
+				}
+			}
+			
+			private function updateComplete(evt:AppEvent):void{
+				var result:Boolean = amf.getResult() as Boolean;
+				if(result){
+					Alert.show('修改成功');
+					PopUpManager.removePopUp(this);
+					return;
+				}
+				Alert.show('修改失败');
+			}
+			
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:TitleWindow x="0" y="0" width="100%" height="100%" title="修改密码" close="titlewindow1_closeHandler(event)">
+		<s:Form x="0" y="0" width="100%" height="100%">
+			<s:layout>
+				<s:VerticalLayout paddingLeft="5" paddingTop="5"/>
+			</s:layout>
+			<s:FormItem width="366" label="原密码    ">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:Spacer width="25" height="18"/>
+				<s:TextInput id="old_pwd" width="240" prompt="请输入六位以上的数字和字母" displayAsPassword="true"/>
+				<s:Label color="#FF0000" text="*"/>
+			</s:FormItem>
+			<s:FormItem width="368" label="新密码">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:Spacer width="24" height="20"/>
+				<s:TextInput id="new_pwd" width="238" prompt="请输入六位以上的数字和字母" displayAsPassword="true"/>
+				<s:Label color="#FF0606" text="*"/>
+			</s:FormItem>
+			<s:FormItem width="368" label="确认密码">
+				<s:layout>
+					<s:HorizontalLayout/>
+				</s:layout>
+				<s:Spacer width="10" height="10"/>
+				<s:TextInput id="re_pwd" width="245" prompt="请输入六位以上的数字和字母" displayAsPassword="true"/>
+				<s:Label color="#FF0000" text="*"/>
+			</s:FormItem>
+			<s:FormItem width="368">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:Spacer width="227" height="9"/>
+				<s:Button id="submit_btn" label="提交" click="submit()" buttonMode="true"/>
+			</s:FormItem>
+		</s:Form>
+	</s:TitleWindow>
+</s:Group>

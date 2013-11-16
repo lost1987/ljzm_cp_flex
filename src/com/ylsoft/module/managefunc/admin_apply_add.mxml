@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:component="com.ylsoft.component.*" creationComplete="init()"
+		  width="100%" height="100%">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.config.ContentConfig;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			
+			private var permissions:ArrayCollection;
+			
+			private var amf:Amf;
+			private var _amf:Amf;
+			private var listModule:String = 'managefunc/admin_apply_list';
+			private var editModule:String = 'managefunc/admin_apply_add';
+			
+			/*****表单对象****/
+			private var formObj:Object;
+			private var _admin:String;
+			private var _passwd:String;
+			private var _buissnesser:int;
+			private var _permission:int;
+			private var _buissnessername:String;
+			private var _flagname:String;
+			
+			private function init():void{
+				
+				/*****通用方法*****/
+				FlexGlobals.topLevelApplication.form_return.enabled=true;
+				FlexGlobals.topLevelApplication.form_return.addEventListener(MouseEvent.CLICK,returnTable);//定义返回列表方法
+				fb.save_btn.addEventListener(MouseEvent.CLICK,save);
+				this.fb.save_btn.label = '提交申请';
+				
+				this.cb_permission.labelField = 'label';
+				permissions = new ContentConfig().get_admin_apply_permission();
+				this.cb_permission.dataProvider = permissions;
+				
+				this.cb_buissnessers.labelField = 'name';
+				this.cb_buissnessers.dataProvider = AppConfig.buissnesser;
+				
+			
+			}
+			
+			
+			private function returnTable(evt:MouseEvent):void{
+				FlexGlobals.topLevelApplication.main_right.removeAllElements();
+				ModuleGlobal.Modulefactory_main = new ModuleFactory();
+				ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+				ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+				AppConfig.formoperation = null;	
+				FlexGlobals.topLevelApplication.form_return.removeEventListener(MouseEvent.CLICK,returnTable);
+			}
+			
+			private function formvalidate():Boolean{
+				 _admin   = Toolkit.blankClear(this.admin.text);
+				 _passwd   = Toolkit.blankClear(this.passwd.text);
+				 var re_passwd : String = Toolkit.blankClear(this.re_passwd.text);
+				 _permission = this.cb_permission.selectedItem == null ? -1 : this.cb_permission.selectedItem.value;
+				 _buissnesser = this.cb_buissnessers.selectedItem == null ? -1 : this.cb_buissnessers.selectedItem.id;
+				 _buissnessername = this.cb_buissnessers.selectedItem == null ? '' : this.cb_buissnessers.selectedItem.name;
+				 _flagname = Toolkit.blankClear(this.flagname.text);
+				
+				if(_admin.length < 6 || _admin.length >20 || _admin == ''){
+					Alert.show('用户名填写不符合要求!');
+					return false;
+				}
+				
+				if(_passwd.length < 6 || _passwd.length >20 || _passwd == '' || _passwd != re_passwd){
+					Alert.show('密码填写不符合要求!');
+					return false;
+				}
+				
+				if(_permission == -1){
+					Alert.show('权限选择不符合要求!');
+					return false;
+				}
+				
+				if(_buissnesser == -1){
+					Alert.show('运营商选择不符合要求!');
+					return false;
+				}
+				
+				if(_flagname == ''){
+					Alert.show('描述不能为空');
+					return false;
+				}
+				
+				return true;
+			}
+			
+			private function save(evt:MouseEvent):void{
+				
+				if(this.formvalidate() == false)return;
+				
+				formObj = new Object();
+				formObj.admin = _admin;
+				formObj.passwd = _passwd;
+				formObj.bid = _buissnesser;
+				formObj.permission = _permission;
+				formObj.op_admin = AppConfig.admin.flagname;
+				formObj.op_adminid = AppConfig.admin.id;
+				formObj.buissnesser = _buissnessername;
+				formObj.flagname = _flagname;
+				
+				
+				/*if(AppConfig.formoperation == AppConfig.FORMEDIT){
+					formObj.id = AppConfig.formid;
+				}*/
+				
+				amf = new Amf();
+				amf.registerCallBack(saveComplete);
+				amf.startService('manageApplyService','save',formObj);
+			}
+			
+			private function saveComplete(evt:AppEvent):void{
+				var result:Boolean = amf.getResult() as Boolean;
+				if(result){
+					FlexGlobals.topLevelApplication.main_right.removeAllElements();
+					ModuleGlobal.Modulefactory_main = new ModuleFactory();
+					ModuleGlobal.Modulefactory_main.setProgress(UIProgressBar.getInstance());
+					ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+					ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+					AppConfig.formoperation = null;	
+					AppConfig.formid = 0;
+					Alert.show('操作成功');
+					return;
+				}
+				Alert.show('操作失败');
+			}
+			
+			
+		]]>
+	</fx:Script>
+	<s:Panel width="100%" height="100%" id="pl" title="申请管理员账号">
+	<s:VGroup x="0" y="0" width="100%" height="100%">
+		<s:Form width="100%" height="95%">
+			<s:layout>
+				<s:VerticalLayout/>
+			</s:layout>
+			<s:FormItem width="320" label="账号">
+				<s:TextInput id="admin" width="191" prompt="6-20位"/>
+			</s:FormItem>
+			<s:FormItem label="密码">
+				<s:TextInput id="passwd" width="191" prompt="6-20位" displayAsPassword="true"/>
+			</s:FormItem>
+			<s:FormItem width="273" label="描述(名称)">
+				<mx:TextInput id="flagname" width="156"/>
+			</s:FormItem>
+			<s:FormItem label="权限">
+			<mx:ComboBox id="cb_permission" openDuration="300"/>
+			</s:FormItem>
+			<s:FormItem label="重复密码">
+				<s:TextInput id="re_passwd" width="213" prompt="6-20位" displayAsPassword="true"/>
+			</s:FormItem>
+			<s:FormItem label="运营商">
+				<mx:ComboBox id="cb_buissnessers" openDuration="300"/>
+			</s:FormItem>
+		</s:Form>
+		<component:FormBottom id="fb">
+		</component:FormBottom>
+	</s:VGroup>
+	</s:Panel>
+</s:Module>

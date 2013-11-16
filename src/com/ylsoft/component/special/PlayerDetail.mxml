@@ -1,0 +1,950 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" creationComplete="init()"
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+    <fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Color;
+			import com.ylsoft.common.ColorLabel;
+			import com.ylsoft.common.SColorLabel;
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.event.AppEvent;
+			
+			import flash.events.KeyboardEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.ArrayList;
+			import mx.controls.Alert;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.events.IndexChangedEvent;
+			import mx.managers.PopUpManager;
+			
+			import spark.components.FormItem;
+			import spark.components.HGroup;
+			import spark.components.Label;
+			import spark.components.TileGroup;
+			import spark.components.gridClasses.GridColumn;
+			import spark.components.gridClasses.GridItemRenderer;
+			import spark.skins.spark.DefaultGridItemRenderer;
+			
+			private var amf:Amf;
+			private var pid:uint;
+			private var server:Object;
+			private var inited_tabs:Array = new Array();
+			
+			private function init():void{
+				this.parent.addEventListener(KeyboardEvent.KEY_UP,cancelHandler);
+				this.tn.addEventListener(IndexChangedEvent.CHANGE,selectTab);
+			}
+			
+			public function setPlayerDetail(player:Object,server:Object):void{
+				this.pid  = player.id;
+				this.server = server;
+				
+				this.player_id.text = player.id;
+				this.account_name.text = player.account_name;
+				this.role_name.text = player.name;
+				this.createdate.text = player.createdate;
+				this.last_login.text = player.last_login;
+				this.last_ip.text = player.last_ip;
+				this.onlinetime.text = (player.onlinetime/60).toFixed(1)+'分钟';
+				this.login_status.text = player.login_status;
+				this.camp.text = player.camp;
+				this.profession.text = player.profession;
+				this.levels.text = player.levels;
+				this.yuanbaototal.text = player.yuanbaototal;
+				this.yuanbaonum.text = player.yuanbaonum;
+				this.yuanbao.text = player.yuanbao;
+				this.money.text = player.money;
+				this.rightcode.text = player.rightcode;
+				this.vip.text = player.vip;
+				this.partyname.text = player.partyname;
+				this.partyjob.text = player.partyjob;
+				this.banggong.text = player.banggong;
+				this.jingli.text = player.jingli;
+				this.lingqi.text = player.lingqi;
+				this.mask18.text = player.mask18;
+				this.rank.text = player.rankname+' '+player.rankpt+'/'+player.ranklimit;
+				this.map.text = player.map;
+				this.pvalue.text = player.pvalue;
+				this.location.text = player.location;
+				this.rongyu.text = player.rongyu;
+				this.tianshen.text = player.lev+'阶段,'+'(经验值'+player.exp+')';
+				this.jingying.text = player.jingyingname + ' ' + player.CurRound + '关';
+			}
+			
+			private function getRoleDetail():void{
+				amf = new Amf;
+				amf.setFaultMessage('无法读取角色信息');
+				amf.registerCallBack(setRoleDetail);
+				amf.startService('roleService','detail',pid,server);
+			}
+			
+			private function setRoleDetail(evt:AppEvent):void{
+				var role:Object = amf.getResult();
+				
+				this.shengming.text = role.shengming;
+				this.mask8.text = role.mask8;
+				this.fali.text = role.fali;
+				this.mask9.text = role.mask9;
+				this.exp.text = role.exp;
+				this.xingji.text = role.xingji;
+				this.liliang.text = role.liliang;
+				this.jinggu.text = role.jingu;
+				this.shenfa.text = role.shenfa;
+				this.lingli.text = role.lingli;
+				this.conghui.text = role.conghui;
+				this.wugong.text = role.wugong;
+				this.wufang.text = role.wufang;
+				this.fagong.text = role.fafang;
+				this.shanbi.text = role.shanbi;
+				this.mingzhong.text = role.mingzhong;
+				this.chuantou.text = role.chuantou;
+				this.baoji.text = role.baoji;
+				this.jianren.text = role.jianren;
+				this.gedang.text = role.gedang;
+				this.fightcap.text = role.fightcap;
+				this.fafang.text = role.fafang;
+			}
+			
+			private function getItemsDetail():void{
+				amf = new Amf;
+				amf.setFaultMessage('无法读取装备信息');
+				amf.registerCallBack(setItemsDetail);
+				amf.startService('itemsService','detail',pid,server);
+			}
+			
+			private function setItemsDetail(evt:AppEvent):void{
+				var items:ArrayCollection = new ArrayCollection(amf.getResult() as Array);
+				for each(var item:Object in items){
+					if(item.hasOwnProperty('itemname')){
+						var fm:FormItem = new FormItem();
+						fm.layout = new VerticalLayout;
+						this.form_items.addElement(fm);
+						var label:Label = new Label();
+						label.text = item.itemname + ' +'+item.strength;
+						label.setStyle('color',Color[item.color]);
+						fm.addElement(label);
+						
+						//添加符文
+						if(item.fws == null)continue;
+						
+						for each(var fw:Object in item.fws){
+							var fwlabel : Label = new Label;
+							fwlabel.text = '['+fw.name+']';
+							fm.addElement(fwlabel);
+						}
+						
+					}
+				}
+			}
+			
+			private function getFacilityDetail():void{
+				amf = new Amf;
+				amf.setFaultMessage('无法读取声望信息');
+				amf.registerCallBack(setFacilityDetail);
+				amf.startService('facilityService','detail',pid,server);
+			}
+			
+			private function setFacilityDetail(evt:AppEvent):void{
+				var item:Object = amf.getResult() as Object;
+				if(item == null)return;
+				for(var i:uint = 1; i< 4;i++){
+					if(item.hasOwnProperty('facility'+i)){
+						var fm:FormItem = new FormItem();
+						this.form_facility.addElement(fm);
+						var label:Label = new Label();
+						label.text = item['facility'+i];
+						fm.addElement(label);
+					}
+				}
+			}
+			
+			private function getHwDetail():void{
+				amf = new Amf;
+				amf.setFaultMessage('无法读取魂武信息');
+				amf.registerCallBack(setHwDetail);
+				amf.startService('hunwuService','detail',pid,server);
+			}
+			
+			private function setHwDetail(evt:AppEvent):void{
+				var hw:Object = amf.getResult() as Object;
+				for(var i:uint = 0; i< 10;i++){
+					if(hw.hasOwnProperty('hunwu'+i)){
+						var fm:FormItem = new FormItem();
+						this.form_hw.addElement(fm);
+						var label:Label = new Label();
+						label.text = hw['hunwu'+i];
+						fm.addElement(label);
+					}
+				}
+			}
+			
+			private function getMjcDetail():void{
+				amf = new Amf;
+				amf.setFaultMessage('无法读取名将册信息');
+				amf.registerCallBack(setMjcDetail);
+				amf.startService('mjcService','detail',pid,server);
+			}
+			
+			private function setMjcDetail(evt:AppEvent):void{
+				var mjc : Object = amf.getResult();
+				if(mjc != null){
+					for (var i:uint = 1 ; i<6 ; i++){
+						var fm:FormItem = new FormItem();
+						this.form_mjc.addElement(fm);
+						var label:Label = new Label();
+						label.text = mjc['cardname'+i];
+						fm.addElement(label);
+					}
+					if(mjc.hasOwnProperty('effect1') && mjc.hasOwnProperty('effect2')){
+						for (i = 1 ; i<3 ; i++){
+							fm = new FormItem();
+							this.form_mjc.addElement(fm);
+							label = new Label();
+							label.text = mjc['effect'+i];
+							label.setStyle('color',Color[mjc.color]);
+							fm.addElement(label);
+						}
+					}
+				}
+			}
+			
+			private function getPartnerDetail():void{
+				amf = new Amf;
+				amf.setFaultMessage('无法读取伙伴信息');
+				amf.registerCallBack(setPartnerDetail);
+				amf.startService('partnerService','detail',pid,server);
+			}
+			
+			private function setPartnerDetail(evt:AppEvent):void{
+				var partners:ArrayCollection = new ArrayCollection(amf.getResult() as Array);
+				if(partners.length > 0){
+					for(var i:uint = 0 ; i<partners.length;i++){
+						var fm:FormItem = new FormItem();
+						this.form_partner.addElement(fm);
+						var tilegroup : TileGroup = new TileGroup;
+						fm.addElement(tilegroup);
+						fm.width = this.form_partner.width
+						tilegroup.width = this.form_partner.width;
+						fm.height = 50;
+						tilegroup.height = 50;
+						
+						var label_name :Label = new Label();
+						label_name.text = partners.getItemAt(i).name;
+						label_name.width = 60;
+						label_name.setStyle('color',Color[partners.getItemAt(i).color]);
+						tilegroup.addElement(label_name);
+						
+						var label_level :Label = new Label();
+						label_level.text = '等级'+partners.getItemAt(i).levels;
+						label_level.width = 60;
+						tilegroup.addElement(label_level);
+						
+						for(var k:uint = 1; k<7; k++){
+							if(partners.getItemAt(i).hasOwnProperty('zb'+k)){
+								var label_zb : Label = new Label();
+								label_zb.text = partners.getItemAt(i)['zb'+k] == 0 ? '' : partners.getItemAt(i)['zb'+k];
+								label_zb.setStyle('color',Color[partners.getItemAt(i)['zbcolor'+k]]);
+								label_zb.width = 90;
+								tilegroup.addElement(label_zb);
+							}
+						}
+						
+						//取得法宝
+						//当前对象
+						var fm_fabao:FormItem = new FormItem();
+						this.form_partner.addElement(fm_fabao);
+						var tilegroup_fabao : TileGroup = new TileGroup;
+						fm_fabao.addElement(tilegroup_fabao);
+						fm_fabao.width = this.form_partner.width
+						tilegroup_fabao.width = this.form_partner.width;
+						fm_fabao.height = 50;
+						tilegroup_fabao.height = 50;
+						
+						var fabao_title:Label = new Label;
+						fabao_title.text = '法宝:';
+						fabao_title.width = 60;
+						fabao_title.setStyle('color',Color.purple);
+						tilegroup_fabao.addElement(fabao_title);
+						var current_huoban :Object = partners.getItemAt(i) ;
+						for(var j:uint =1 ; j<9 ; j++){
+							if(current_huoban.hasOwnProperty('fabao_name'+j) && current_huoban['fabao_name'+j] != ''){
+								var label_fabao : Label = new Label;
+								label_fabao.width = 90;
+								label_fabao.text = current_huoban['fabao_name'+j]+'LV.'+current_huoban['fabao_level'+j];
+								label_fabao.setStyle('color',Color[current_huoban['fabao_color'+j]]);
+								tilegroup_fabao.addElement(label_fabao);
+							}
+						}
+					}
+				}
+			}
+			
+			private function getNormBagDetail():void{
+				amf = new Amf;
+				amf.setFaultMessage('无法读取背包信息');
+				amf.registerCallBack(setNormBagDetail);
+				amf.startService('bagService','detail',pid,server,'normal');
+			}
+			
+			private function setNormBagDetail(evt:AppEvent):void{
+				//普通背包
+				var normalbag : ArrayCollection = new ArrayCollection(amf.getResult() as Array);
+				var col1 : DataGridColumn = new DataGridColumn;
+				col1.dataField = 'name';
+				col1.headerText = '物品名称';
+				col1.itemRenderer = new ClassFactory(ColorLabel);
+				
+				var col2 : DataGridColumn = new DataGridColumn;
+				col2.dataField = 'num';
+				col2.headerText = '物品数量';
+				
+				this.dg_normalbag.columns = new Array(col1,col2);
+				this.dg_normalbag.dataProvider = normalbag;
+			}
+			
+			private function getTempBagDetail():void{
+				amf = new Amf;
+				amf.setFaultMessage('无法读取背包信息');
+				amf.registerCallBack(setTempBagDetail);
+				amf.startService('bagService','detail',pid,server,'temp');
+			}
+			
+			private function setTempBagDetail(evt:AppEvent):void{
+				//临时背包
+				var tempbag : ArrayCollection = new ArrayCollection(amf.getResult() as Array);
+				var col3 : DataGridColumn = new DataGridColumn;
+				col3.dataField = 'name';
+				col3.headerText = '物品名称';
+				col3.itemRenderer = new ClassFactory(ColorLabel);
+				
+				var col4 : DataGridColumn = new DataGridColumn;
+				col4.dataField = 'num';
+				col4.headerText = '物品数量';
+				this.dg_tempbag.columns = new Array(col3,col4);
+				this.dg_tempbag.dataProvider = tempbag;
+			}
+			
+			private function getTaskBagDetail():void{
+				amf = new Amf;
+				amf.setFaultMessage('无法读取背包信息');
+				amf.registerCallBack(setTaskBagDetail);
+				amf.startService('bagService','detail',pid,server,'task');
+			}
+			
+			private function setTaskBagDetail(evt:AppEvent):void{
+				//任务背包
+				var jobbag : ArrayCollection = new ArrayCollection(amf.getResult() as Array);
+				var col5 : DataGridColumn = new DataGridColumn;
+				col5.dataField = 'name';
+				col5.headerText = '物品名称';
+				col5.itemRenderer = new ClassFactory(ColorLabel);
+				
+				var col6 : DataGridColumn = new DataGridColumn;
+				col6.dataField = 'num';
+				col6.headerText = '物品数量';
+				this.dg_taskbag.columns = new Array(col5,col6);
+				this.dg_taskbag.dataProvider = jobbag;
+			}
+			
+			private function getFabaoBagDetail():void{
+				amf = new Amf;
+				amf.setFaultMessage('无法读取背包信息');
+				amf.registerCallBack(setFabaoBagDetail);
+				amf.startService('bagService','detail',pid,server,'fabao');
+			}
+			
+			private function setFabaoBagDetail(evt:AppEvent):void{
+				//法宝背包
+				var fabaobag : Object = amf.getResult();
+				if(fabaobag==null)return;
+				var fabaolist : ArrayCollection = new ArrayCollection;
+				for(var i:uint = 1; i< 25 ;i++){
+					if(!fabaobag.hasOwnProperty('name'+i))continue;
+					var fabao :Object = new Object;
+					if(fabaobag['name'+i] != null){
+						fabao.name = fabaobag['name'+i];
+						fabao.color = fabaobag['color'+i];
+						fabao.level = fabaobag['level'+i];
+						fabaolist.addItem(fabao);
+					}
+				}
+				var fb_col1 : DataGridColumn = new DataGridColumn;
+				fb_col1.dataField = 'name';
+				fb_col1.headerText = '法宝名称';
+				fb_col1.itemRenderer = new ClassFactory(ColorLabel);
+				
+				var fb_col2 : DataGridColumn = new DataGridColumn;
+				fb_col2.dataField = 'level';
+				fb_col2.headerText = '等级';
+				
+				this.dg_fabaobag.columns = new Array(fb_col1,fb_col2);
+				this.dg_fabaobag.dataProvider = fabaolist;
+				this.dg_fabaobag.invalidateList();
+			}
+			
+			private function getQkBagDetail():void{
+				amf = new Amf;
+				amf.setFaultMessage('无法读取背包信息');
+				amf.registerCallBack(setQkBagDetail);
+				amf.startService('bagService','detail',pid,server,'qk');
+			}
+			
+			private function setQkBagDetail(evt:AppEvent):void{
+				//乾坤袋
+				var qkbag : ArrayCollection = new ArrayCollection(amf.getResult() as Array);
+				var qk_col1 : DataGridColumn = new DataGridColumn;
+				qk_col1.dataField = 'name';
+				qk_col1.headerText = '物品名称';
+				qk_col1.itemRenderer = new ClassFactory(ColorLabel); 
+				
+				var qk_col2 : DataGridColumn = new DataGridColumn;
+				qk_col2.dataField = 'num';
+				qk_col2.headerText = '数量';
+				
+				this.dg_qkbag.columns = new Array(qk_col1,qk_col2);
+				this.dg_qkbag.dataProvider = qkbag;
+			}
+			
+			private function getSkillDetail():void{
+				amf = new Amf;
+				amf.setFaultMessage('无法读取技能信息');
+				amf.registerCallBack(setSkillDetail);
+				amf.startService('skillService','detail',pid,server);
+			}
+			
+			private function setSkillDetail(evt:AppEvent):void{
+				var skill:Object = amf.getResult();
+				if(skill != null){
+					var skillnames : Array = skill.skillnames.split(',');
+					for(var i : int = 0 ; i< skillnames.length; i++){
+						var fm:FormItem = new FormItem();
+						form_skill.addElement(fm);
+						fm.label = skillnames[i];
+						var label:Label = new Label;
+						label.setStyle('color',"#035B8D");
+						fm.addElement(label);
+						label.text = skill['skill'+(i+1)]+'级';
+					}
+				}
+			}
+			
+			private function getXiuweiDetail():void{
+				amf = new Amf;
+				amf.setFaultMessage('无法读取修为信息');
+				amf.registerCallBack(setXiuweiDetail);
+				amf.startService('xiuweiService','detail',pid,server);
+			}
+			
+			private function setXiuweiDetail(evt:AppEvent):void{
+				var xw:Object = amf.getResult();
+				if(xw != null){
+					this.smxw.text = xw.smlevel;
+					this.wgxw.text = xw.wglevel;
+					this.fgxw.text = xw.fglevel;
+					for(var i: int = 1 ; i< 7 ; i++){
+						this['gem'+i].text = xw['gem'+i];
+					}
+				}
+			}
+			
+			private function getShenbing():void{
+				amf = new Amf;
+				amf.setFaultMessage('无法读取神兵信息');
+				amf.registerCallBack(setShenbing);
+				amf.startService('shenbingService','detail',pid,server);
+			}
+			
+			private function setShenbing(evt:AppEvent):void{
+				var shenbing : ArrayCollection = new ArrayCollection(amf.getResult() as Array);
+				if(shenbing.length==0)return;
+				
+				var column1:GridColumn = new GridColumn;
+				column1.dataField = 'name';
+				column1.headerText = '名称';
+				column1.width = 200;
+				var factory : ClassFactory = new ClassFactory(SColorLabel);
+				factory.properties = {color:Color.blue};
+				column1.itemRenderer = factory;
+				
+				var column2:GridColumn = new GridColumn;
+				column2.dataField = 'lev';
+				column2.headerText = '等级';
+				column2.width = 200;
+				
+				var column3:GridColumn = new GridColumn;
+				column3.dataField = 'value0';
+				column3.headerText = '物攻';
+				column3.width = 200;
+				
+				var column4:GridColumn = new GridColumn;
+				column4.dataField = 'value1';
+				column4.headerText = '法防';
+				column4.width = 200;
+				
+				var column5:GridColumn = new GridColumn;
+				column5.dataField = 'value2';
+				column5.headerText = '物防';
+				column5.width = 200;
+				
+				var column6:GridColumn = new GridColumn;
+				column6.dataField = 'value3';
+				column6.headerText = '坚韧';
+				column6.width = 200;
+				
+				var column7:GridColumn = new GridColumn;
+				column7.dataField = 'value4';
+				column7.headerText = '生命';
+				column7.width = 200;
+				
+				var column8:GridColumn = new GridColumn;
+				column8.dataField = 'value5';
+				column8.headerText = '格挡';
+				column8.width = 200;
+				
+				var column9:GridColumn = new GridColumn;
+				column9.dataField = 'value6';
+				column9.headerText = '暴击';
+				column9.width = 200;
+				
+				var column10:GridColumn = new GridColumn;
+				column10.dataField = 'skill1';
+				column10.headerText = '技能1';
+				column10.width = 200;
+				factory  = new ClassFactory(SColorLabel);
+				factory.properties = {color:Color.purple};
+				column10.itemRenderer = factory;
+			
+				dg_shenbing.columns = new ArrayList(new Array(column1,column2,column3,column4,column5,column6,column7,column8,column9,column10));
+				dg_shenbing.dataProvider = shenbing;				
+			}
+			
+			
+			private function closeHandler():void{
+				this.parent.removeEventListener(KeyboardEvent.KEY_UP,cancelHandler);
+				this.tn.removeEventListener(IndexChangedEvent.CHANGE,selectTab);
+				PopUpManager.removePopUp(this);
+			}
+			
+			private function cancelHandler(evt:KeyboardEvent):void{
+				if(evt.keyCode == 27){
+					this.parent.removeEventListener(KeyboardEvent.KEY_UP,cancelHandler);
+					this.tn.removeEventListener(IndexChangedEvent.CHANGE,selectTab);
+					PopUpManager.removePopUp(this);
+				}
+			}
+			
+			private function selectTab(evt:IndexChangedEvent):void{
+				switch(evt.newIndex){
+					case 1: 	if(!Toolkit.in_array('role',this.inited_tabs)){
+									this.getRoleDetail();
+									this.inited_tabs.push('role');
+								}
+								break;
+					
+					case 2:     if(!Toolkit.in_array('items',this.inited_tabs)){
+									this.getItemsDetail();
+									this.inited_tabs.push('items');
+								}
+								break;
+					
+					case 3:     if(!Toolkit.in_array('facility',this.inited_tabs)){
+									this.getFacilityDetail();
+									this.inited_tabs.push('facility');
+								}
+								break;
+					case 4:     if(!Toolkit.in_array('hw',this.inited_tabs)){
+									this.getHwDetail();
+									this.inited_tabs.push('hw');
+								}
+								break;
+					case 5:    if(!Toolkit.in_array('mjc',this.inited_tabs)){
+									this.getMjcDetail();
+									this.inited_tabs.push('mjc');
+								}
+								break;
+					case 6:    if(!Toolkit.in_array('partner',this.inited_tabs)){
+								this.getPartnerDetail();
+								this.inited_tabs.push('partner');
+								}
+								break;
+					case 7:    if(!Toolkit.in_array('normbag',this.inited_tabs)){
+									this.getNormBagDetail();
+									this.inited_tabs.push('normbag');
+								}
+								break;
+					
+					case 8:    if(!Toolkit.in_array('tempbag',this.inited_tabs)){
+									this.getTempBagDetail();
+									this.inited_tabs.push('tempbag');
+								}
+							    break;
+					
+					case 9:    if(!Toolkit.in_array('taskbag',this.inited_tabs)){
+									this.getTaskBagDetail();
+									this.inited_tabs.push('taskbag');
+								}
+						        break;
+					case 10:    if(!Toolkit.in_array('fabaobag',this.inited_tabs)){
+									this.getFabaoBagDetail();
+									this.inited_tabs.push('fabaobag');
+								}
+						        break;
+					case 11:    if(!Toolkit.in_array('qkbag',this.inited_tabs)){
+									this.getQkBagDetail();
+									this.inited_tabs.push('qkbag');
+								}
+						        break;
+					case 12 :   if(!Toolkit.in_array('skill' ,this.inited_tabs)){
+									this.getSkillDetail();
+									this.inited_tabs.push('skill');
+								}
+								break;
+					case 13 :   if(!Toolkit.in_array('xiuwei' ,this.inited_tabs)){
+									this.getXiuweiDetail();
+									this.inited_tabs.push('xiuwei');
+								}
+								break;
+					case 14:   if(!Toolkit.in_array('shenbing',this.inited_tabs)){
+									this.getShenbing();
+									this.inited_tabs.push('shenbing');
+								}
+								break;
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<s:TitleWindow x="0" y="0" width="100%" height="100%" borderVisible="false"
+				   close="closeHandler()" dropShadowVisible="true" title="玩家详情">
+		<mx:TabNavigator x="0" y="0" width="100%" height="100%" borderVisible="true" id="tn"
+						 dropShadowVisible="true">
+			<s:NavigatorContent width="100%" height="100%" label="基本信息">
+				<s:Scroller width="100%" height="95%">
+				<s:Group width="100%" height="100%">
+				<s:Form x="-1" y="0" width="100%" height="100%">
+					<s:layout>
+						<s:TileLayout/>
+					</s:layout>
+					<s:FormItem width="150" label="玩家ID">
+						<s:Label color="#035B8D" text="" id="player_id"/>
+					</s:FormItem>
+					<s:FormItem label="玩家账号">
+						<s:Label color="#035B8D" text="" id="account_name"/>
+					</s:FormItem>
+					<s:FormItem label="角色名">
+						<s:Label color="#035B8D" text="" id="role_name"/>
+					</s:FormItem>
+					<s:FormItem label="创建时间">
+						<s:Label color="#035B8D" text="" id="createdate"/>
+					</s:FormItem>
+					<s:FormItem label="最后登录时间">
+						<s:Label color="#035B8D" text="" id="last_login"/>
+					</s:FormItem>
+					<s:FormItem label="最后登录IP">
+						<s:Label color="#035B8D" text="" id="last_ip"/>
+					</s:FormItem>
+					<s:FormItem label="活跃时间">
+						<s:Label color="#035B8D" text="" id="onlinetime"/>
+					</s:FormItem>
+					<s:FormItem label="当前状态">
+						<s:Label color="#035B8D" text="" id="login_status"/>
+					</s:FormItem>
+					<s:FormItem label="阵营">
+						<s:Label color="#035B8D" text="" id="camp"/>
+					</s:FormItem>
+					<s:FormItem label="等级">
+						<s:Label color="#035B8D" text="" id="levels"/>
+					</s:FormItem>
+					<s:FormItem label="职业">
+						<s:Label color="#035B8D" text="" id="profession"/>
+					</s:FormItem>
+					<s:FormItem label="总充值金额">
+						<s:Label color="#035B8D" text="" id="yuanbaototal"/>
+					</s:FormItem>
+					<s:FormItem label="充值次数">
+						<s:Label color="#035B8D" text="" id="yuanbaonum"/>
+					</s:FormItem>
+					<s:FormItem label="元宝">
+						<s:Label color="#035B8D" text="" id="yuanbao"/>
+					</s:FormItem>
+					<s:FormItem label="银币">
+						<s:Label color="#035B8D" text="" id="money"/>
+					</s:FormItem>
+					<s:FormItem label="是否防沉迷">
+						<s:Label color="#035B8D" text="" id="rightcode"/>
+					</s:FormItem>
+					<s:FormItem label="VIP">
+						<s:Label color="#035B8D" text="" id="vip"/>
+					</s:FormItem>
+					<s:FormItem label="所在帮会">
+						<s:Label color="#035B8D" text="" id="partyname"/>
+					</s:FormItem>
+					<s:FormItem label="帮会职位">
+						<s:Label color="#035B8D" text="" id="partyjob"/>
+					</s:FormItem>
+					<s:FormItem label="帮会贡献">
+						<s:Label color="#035B8D" text="" id="banggong"/>
+					</s:FormItem>
+					<s:FormItem label="精力">
+						<s:Label color="#035B8D" text="" id="jingli"/>
+					</s:FormItem>
+					<s:FormItem label="荣誉">
+						<s:Label color="#035B8D" id="rongyu" />
+					</s:FormItem>
+					<s:FormItem label="灵气">
+						<s:layout>
+							<s:BasicLayout/>
+						</s:layout>
+						<s:Label color="#035B8D" text="" id="lingqi"/>
+					</s:FormItem>
+					<s:FormItem label="伏魔">
+						<s:Label color="#035B8D" text="" id="mask18"/>
+					</s:FormItem>
+					<s:FormItem label="军衔积分">
+						<s:Label color="#035B8D" text="" id="rank"/>
+					</s:FormItem>
+					<s:FormItem label="所在地点">
+						<s:Label color="#035B8D" text="" id="map"/>
+					</s:FormItem>
+					<s:FormItem label="日活跃度">
+						<s:Label color="#035B8D" text="" id="pvalue"/>
+					</s:FormItem>
+					<s:FormItem label="IP所在地">
+						<s:layout>
+							<s:HorizontalLayout gap="20" verticalAlign="middle"/>
+						</s:layout>
+						<s:Label id="location"/>
+					</s:FormItem>
+					<s:FormItem label="天神">
+						<s:Label id="tianshen" color="#035B8D"/>
+					</s:FormItem>
+					<s:FormItem label="精英副本">
+						<s:Label id="jingying" color="#035B8D"/>
+					</s:FormItem>
+				</s:Form>
+				</s:Group>
+			</s:Scroller>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="角色信息" id="role" >
+				<s:Form x="-1" y="0" width="100%" height="100%">
+					<s:layout>
+						<s:TileLayout horizontalAlign="left" horizontalGap="20" orientation="rows"/>
+					</s:layout>
+					<s:FormItem width="150" label="生命">
+						<s:Label color="#035B8D" text="" id="shengming"/>
+					</s:FormItem>
+					<s:FormItem label="血库">
+						<s:Label color="#035B8D" text="" id="mask8"/>
+					</s:FormItem>
+					<s:FormItem label="法力">
+						<s:Label color="#035B8D" text="" id="fali"/>
+					</s:FormItem>
+					<s:FormItem label="蓝库">
+						<s:Label color="#035B8D" text="" id="mask9"/>
+					</s:FormItem>
+					<s:FormItem label="经验">
+						<s:Label color="#035B8D" text="" id="exp"/>
+					</s:FormItem>
+					<s:FormItem label="星级">
+						<s:Label color="#035B8D" text="" id="xingji"/>
+					</s:FormItem>
+					<s:FormItem label="力量">
+						<s:Label color="#035B8D" text="" id="liliang"/>
+					</s:FormItem>
+					<s:FormItem label="筋骨">
+						<s:Label color="#035B8D" text="" id="jinggu"/>
+					</s:FormItem>
+					<s:FormItem label="身法">
+						<s:Label color="#035B8D" text="" id="shenfa"/>
+					</s:FormItem>
+					<s:FormItem label="灵力">
+						<s:Label color="#035B8D" text="" id="lingli"/>
+					</s:FormItem>
+					<s:FormItem label="聪慧">
+						<s:Label color="#035B8D" text="" id="conghui"/>
+					</s:FormItem>
+					<s:FormItem label="物攻">
+						<s:Label color="#035B8D" text="" id="wugong"/>
+					</s:FormItem>
+					<s:FormItem label="物防">
+						<s:Label color="#035B8D" text="" id="wufang"/>
+					</s:FormItem>
+					<s:FormItem label="法功">
+						<s:Label color="#035B8D" text="" id="fagong"/>
+					</s:FormItem>
+					<s:FormItem label="法防">
+						<s:Label color="#035B8D" text="" id="fafang"/>
+					</s:FormItem>
+					<s:FormItem label="闪避">
+						<s:Label color="#035B8D" text="" id="shanbi"/>
+					</s:FormItem>
+					<s:FormItem label="命中">
+						<s:Label color="#035B8D" text="" id="mingzhong"/>
+					</s:FormItem>
+					<s:FormItem label="穿透">
+						<s:Label color="#035B8D" text="" id="chuantou"/>
+					</s:FormItem>
+					<s:FormItem label="暴击">
+						<s:Label color="#035B8D" text="" id="baoji"/>
+					</s:FormItem>
+					<s:FormItem label="坚韧">
+						<s:Label color="#035B8D" text="" id="jianren"/>
+					</s:FormItem>
+					<s:FormItem label="格挡">
+						<s:Label color="#035B8D" id="gedang" />
+					</s:FormItem>
+					<s:FormItem label="战斗力">
+						<s:Label color="#035B8D" text="" id="fightcap"/>
+					</s:FormItem>
+				</s:Form>
+			</s:NavigatorContent>	
+			<s:NavigatorContent width="100%" height="100%" label="装备">
+				<s:Form x="-1" y="0" width="100%" height="100%" id="form_items" >
+					<s:layout>
+						<s:TileLayout horizontalAlign="left" horizontalGap="20" orientation="rows"/>
+					</s:layout>
+				</s:Form>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="声望">
+				<s:Form x="-1" y="0" width="100%" height="100%" id="form_facility" >
+					<s:layout>
+						<s:TileLayout horizontalAlign="left" horizontalGap="20" orientation="rows"/>
+					</s:layout>
+				</s:Form>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="魂武">
+				<s:Form x="-1" y="0" width="100%" height="100%" id="form_hw" >
+					<s:layout>
+						<s:TileLayout horizontalAlign="left" horizontalGap="20" orientation="rows"/>
+					</s:layout>
+				</s:Form>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="名将册" id="form_mjc">
+				<s:layout>
+					<s:TileLayout horizontalAlign="left" horizontalGap="20" orientation="rows"/>
+				</s:layout>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="伙伴" id="form_partner_parent">
+				<s:layout>
+					<s:VerticalLayout/>
+				</s:layout>
+				<s:Scroller width="100%" height="100%">
+					<s:Group width="100%" height="100%" >
+						<s:Form width="100%" height="100%" id="form_partner">
+							<s:layout>
+								<s:VerticalLayout/>
+							</s:layout>
+							
+						</s:Form>
+					</s:Group>
+				</s:Scroller>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="普通背包" id="form_normal_bag">
+				<s:layout>
+					<s:VerticalLayout paddingLeft="5"/>
+				</s:layout>
+							<s:Label color="#F00ED3" fontStyle="normal" fontWeight="bold" text="普通背包"
+									 textDecoration="none"/>
+							<mx:DataGrid width="100%" height="380" borderVisible="false"  id="dg_normalbag">
+							</mx:DataGrid>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="临时背包" id="form_temp_bag">
+				<s:layout>
+					<s:VerticalLayout paddingLeft="5"/>
+				</s:layout>
+				<s:Label color="#F00ED3" fontStyle="normal" fontWeight="bold" text="临时背包"
+						 textDecoration="none"/>
+				<mx:DataGrid width="100%" height="380" borderVisible="false"  id="dg_tempbag">
+				</mx:DataGrid>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="任务背包" id="form_task_bag">
+				<s:layout>
+					<s:VerticalLayout paddingLeft="5"/>
+				</s:layout>
+				<s:Label color="#F00ED3" fontStyle="normal" fontWeight="bold" text="任务背包"
+						 textDecoration="none"/>
+				<mx:DataGrid width="100%" height="380" borderVisible="false"  id="dg_taskbag">
+				</mx:DataGrid>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="法宝背包" id="form_fabao_bag">
+				<s:layout>
+					<s:VerticalLayout paddingLeft="5"/>
+				</s:layout>
+				<s:Label color="#F00ED3" fontStyle="normal" fontWeight="bold" text="法宝背包"
+						 textDecoration="none"/>
+				<mx:DataGrid width="100%" height="380" borderVisible="false"  id="dg_fabaobag">
+				</mx:DataGrid>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="乾坤袋" id="form_qk_bag">
+				<s:layout>
+					<s:VerticalLayout paddingLeft="5"/>
+				</s:layout>
+				<s:Label color="#F00ED3" fontStyle="normal" fontWeight="bold" text="乾坤袋"
+						 textDecoration="none"/>
+				<mx:DataGrid width="100%" height="380" borderVisible="false"  id="dg_qkbag">
+				</mx:DataGrid>
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="技能" >
+				<s:layout>
+					<s:VerticalLayout paddingLeft="5"/>
+				</s:layout>
+				<s:Form width="100%" height="100%" id="form_skill">
+					<s:layout>
+						<s:TileLayout/>
+					</s:layout>
+				</s:Form>
+				
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="修为" >
+				<s:layout>
+					<s:VerticalLayout paddingLeft="5"/>
+				</s:layout>
+				<s:Form width="100%" height="100%" id="form_xiuwei">
+					<s:layout>
+						<s:VerticalLayout/>
+					</s:layout>
+					<s:FormItem width="467" label="生命修为">
+						<s:Label id="smxw" color="#035B8D"/>
+					</s:FormItem>
+					<s:FormItem width="469" label="物攻修为">
+						<s:Label id="wgxw" color="#035B8D"/>
+					</s:FormItem>
+					<s:FormItem width="469" label="法功修为">
+						<s:Label id="fgxw" color="#035B8D"/>
+					</s:FormItem>
+					<s:FormItem width="472" label="宝石效果1">
+						<s:Label id="gem1" color="#035B8D"/>
+					</s:FormItem>
+					<s:FormItem width="472" label="宝石效果2">
+						<s:Label id="gem2" color="#035B8D"/>
+					</s:FormItem>
+					<s:FormItem width="472" label="宝石效果3">
+						<s:Label id="gem3" color="#035B8D"/>
+					</s:FormItem>
+					<s:FormItem width="472" label="宝石效果4">
+						<s:Label id="gem4" color="#035B8D"/>
+					</s:FormItem>
+					<s:FormItem width="472" label="宝石效果5">
+						<s:Label id="gem5" color="#035B8D"/>
+					</s:FormItem>
+					<s:FormItem width="472" label="宝石效果6">
+						<s:Label id="gem6" color="#035B8D"/>
+					</s:FormItem>
+				</s:Form>
+				
+			</s:NavigatorContent>
+			<s:NavigatorContent width="100%" height="100%" label="神兵" >
+				<s:DataGrid id="dg_shenbing" x="0" y="0" width="100%" height="100%"
+							>
+				</s:DataGrid>
+			</s:NavigatorContent>
+		</mx:TabNavigator>
+		
+	</s:TitleWindow>
+</s:Group>

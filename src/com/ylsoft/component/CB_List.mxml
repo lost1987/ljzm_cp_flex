@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Toolkit;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			
+			import ronco.bbxq.ObjAni;
+			public var selectedItems:ArrayCollection;
+			private var dataSource:ArrayCollection;
+			
+			/****
+			 * 
+			 * list的dataProvider 必须提供的结构属性  
+			 * 1.@param Boolean  _select 是否被选中 
+			 * 2.@param String   displayName checkbox的label
+			 * 
+			 * 
+			 * **/
+			
+			
+			/**
+			 *需要在初始化之前外部设置的变量 
+			 * 
+			 ***/
+			public var dataProvider:ArrayCollection;
+			
+			/**
+			 * 设置数据以后再进行init初始化
+			 ***/
+			public function setDaTa(data:ArrayCollection):void{
+				if(data.length>0){
+					for each(var obj:Object in data){
+						obj._select = false;
+					}
+					this.dataProvider = data;
+				}
+			}
+			
+			
+			public function init():void{
+				if(this.dataProvider != null){
+					this.selectedItems = new ArrayCollection;
+					this.list.dataProvider = this.dataProvider;
+					this.dataSource = Toolkit.clone(this.dataProvider);
+				}
+			}
+			
+			public function clickHanlder(obj:Object):void{
+				this.dataSource = Toolkit.clone(this.dataProvider);//保持datasource的完整性
+				var item:Object = this.list.dataProvider.getItemAt(list.selectedIndex);//保持选中状态的完整性
+				var itemTemp:Object = this.dataSource.getItemAt(list.selectedIndex);
+				if(obj.chxBox.selected){
+					item._select = true;
+					itemTemp._select = true;
+					this.selectedItems.addItem(item);
+				}else{
+					item._select = false;
+					itemTemp._select = false;
+					for(var i:int = 0; i < selectedItems.length; i++)	{
+						if(item.id == selectedItems[i].id && item.sid == selectedItems[i].sid){
+							this.selectedItems.removeItemAt(i);
+						}
+					}
+				}
+			}
+			
+			public function clear():void{
+				this.selectedItems = null;
+				this.dataProvider = null;
+				this.dataSource = null;
+				this.list.dataProvider = null;
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:List id="list" x="0" y="0" width="100%" height="100%" borderColor="#BCB9B9" 
+			borderVisible="true">
+		<s:itemRenderer>
+			<fx:Component>
+				<mx:HBox horizontalAlign="left" width="100%" paddingLeft="5">
+					<s:CheckBox id="chxBox" selected="{data._select}" label="{data.displayName}" buttonMode="true" change="outerDocument.clickHanlder(this);" >
+					</s:CheckBox>
+				</mx:HBox>
+			</fx:Component>
+		</s:itemRenderer>
+	</s:List>
+</s:Group>

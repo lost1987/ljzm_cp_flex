@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:component="com.ylsoft.component.*"
+		  width="100%" height="100%" creationComplete="init()">
+	<!--用户分析-->
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Excel;
+			import com.ylsoft.common.Message;
+			import com.ylsoft.common.Pagelimit;
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.common.XWindow;
+			import com.ylsoft.component.BuissnesserChooserMuti;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.core.FlexGlobals;
+			import mx.formatters.DateFormatter;
+			import mx.managers.PopUpManager;
+			import mx.utils.ObjectUtil;
+			
+			import spark.components.gridClasses.GridColumn;
+			private var amf:Amf;
+			private var _amf:Amf;
+			public var servers:ArrayCollection = new ArrayCollection;
+			private var _total:Object = new Object;
+			private var _dateformat:DateFormatter = new DateFormatter();
+			private var _datediff:Array ;
+			
+			private function init():void{
+				//禁用返回列表
+				FlexGlobals.topLevelApplication.form_return.enabled=false;
+				_dateformat.formatString = 'YYYY/MM/DD';
+				this.addEventListener(AppEvent.BUISSNESSER_CHOOSE_COMPLETE,buissnessChooseComplete);
+			}
+			
+			public function initDataGrid(evt:AppEvent):void{
+				this.initColumns();				
+				
+				var result:ArrayCollection
+				if(amf != null){
+					result = new ArrayCollection(amf.getResult() as Array);
+				}
+				this.cd.dataProvider = result;
+				amf = null;
+				
+				FlexGlobals.topLevelApplication.dispatchEvent(new AppEvent(AppEvent.EXCEL_EXPORT_READY));
+			}
+			
+			private function initColumns():void{
+				var columns:ArrayCollection = new ArrayCollection();
+				var _column:GridColumn = new GridColumn;
+				_column.headerText = '';
+				_column.dataField = 'datedesp';
+				_column.width = 80;
+				columns.addItem(_column);
+				for(var i:int=0;i<_datediff.length;i++){
+					var column:GridColumn = new GridColumn();
+					column.headerText = _datediff[i];
+					column.dataField = 'num'+i;
+					column.width = 150;
+					columns.addItem(column);
+				}
+				this.cd.columns = columns;
+			}
+			
+			
+			private function buissnesserChooser():void{
+				var bc : BuissnesserChooserMuti = new BuissnesserChooserMuti();
+				bc.width = 800;
+				bc.height = 400;
+				XWindow.getInstance().addWindow(bc,this).show();
+			}
+			
+			private function getCondition():Object{
+				var condition : Object = new Object();
+				condition.starttime = this.starttime.text;
+				condition.endtime = this.endtime.text;
+				var _server_ids:String = '';
+				for each(var obj:Object in this.servers){
+					_server_ids += obj.id + ',';
+				}
+				_server_ids = _server_ids.substr(0,_server_ids.length-1);
+				condition.server_ids = _server_ids;
+				return condition;
+			}
+			
+			private function doSearch():void{
+				_datediff = Toolkit.datediff(this.starttime.text,this.endtime.text);
+				amf = new Amf();
+				amf.setFaultMessage("通信失败");
+				amf.registerCallBack(initDataGrid);
+				amf.startService('userAnalysisDataService','lists',getCondition());
+			}
+			
+			
+			private function checkServerChooser(evt:Event):void{
+				_datediff = Toolkit.datediff(this.starttime.text,this.endtime.text);
+				if(this.servers.length == 0 || this.starttime.text == '' || this.endtime.text == '')
+					this.search_btn.enabled = false;
+				else{
+					var parttern : RegExp = /-|:/g;
+					var startdate:String = this.starttime.text.replace(parttern,'');
+					var enddate : String = this.endtime.text.replace(parttern,'');
+					if(int(startdate) > int(enddate)){
+						Alert.show('起始日期不能大于结束日期');
+						this.search_btn.enabled = false;return;
+					}else if(_datediff.length > 30){
+						Alert.show('统计日期不能超过30天');
+						this.search_btn.enabled = false;return;
+					}
+					
+					this.search_btn.enabled = true;
+				}
+			}
+			
+			private function search_today():void{
+				var today:String = this._dateformat.format(new Date);
+				this.starttime.text = today;
+				this.endtime.text = today;
+				this.search_btn.enabled = true;
+				this.search_btn.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+			}
+			
+			private function search_seven():void{
+				var oneday : Number = 60 * 60 * 24 *1000;
+				var datenow:Date = new Date();
+				var enddate: String = this._dateformat.format(datenow);
+				var startdate : String = this._dateformat.format(new Date(datenow.time - 7*oneday));
+				this.starttime.text = startdate;
+				this.endtime.text = enddate;
+				this.search_btn.enabled = true;
+				this.search_btn.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+			}
+			
+			private function buissnessChooseComplete(evt:AppEvent):void{
+				var starttime:String = this.starttime.text;
+				var endtime:String = this.endtime.text;
+				if(starttime!='' && endtime !='' && this.servers.length >0){
+					this.search_btn.enabled = true;
+				}else if(this.servers.length > 0){
+				}
+				else {
+					this.search_btn.enabled = false;
+				}
+			}
+			
+			public function exportExcel(evt:AppEvent):void{
+				var excel : Excel = Excel.getInstance();
+				excel.address = AppConfig.EXCEL_GATEWAY;
+				excel.dgcolumns = this.cd;
+				excel.start_time = this.starttime.text;
+				excel.end_time = this.endtime.text;
+				excel.excel_name = '用户分析';
+				excel.module_key = AppConfig.module_key;
+				var server_ids:Array = [];
+				for each(var server:Object in this.servers){
+					server_ids.push(server.id);
+				}
+				excel.server_id = server_ids.join(',');
+				excel.httpBuildQuery();
+				FlexGlobals.topLevelApplication.btn_excel_export.enabled = true;
+			}
+		]]>
+	</fx:Script>
+	<s:Panel width="100%" height="100%" dropShadowVisible="true" title="用户分析">
+		<component:Search x="0" top="0">
+		</component:Search>
+		<s:DataGrid id="cd" x="0" y="66" width="100%" height="90%" borderVisible="false" sortableColumns="false"  >
+		</s:DataGrid>
+		<s:HGroup right="2" top="2" width="300">
+			<s:Button id="search_btn"  label="查询" click="doSearch()" enabled="false" buttonMode="true"/>
+			<s:Button  label="选择运营商和服务器" click="buissnesserChooser()" buttonMode="true"/>
+		</s:HGroup>
+		<mx:DateField x="42" y="7" width="155" buttonMode="true" yearNavigationEnabled="true" id="starttime" change="checkServerChooser(event)"  monthNames="[一月,二月,三月,四月,五月,六月,七月,八月,九月,十月,十一月,十二月]"  dayNames="[日,一,二,三,四,五,六]"  formatString="YYYY/MM/DD"/>
+		<mx:DateField x="42" y="34" width="155" buttonMode="true" yearNavigationEnabled="true" id="endtime"  change="checkServerChooser(event)" monthNames="[一月,二月,三月,四月,五月,六月,七月,八月,九月,十月,十一月,十二月]"  dayNames="[日,一,二,三,四,五,六]" formatString="YYYY/MM/DD"/>
+		<s:Label x="10" y="12" text="开始" />
+		<s:Label x="10" y="39" text="结束"/>
+		<s:HGroup y="34" right="0" width="302">
+			<s:Label  fontWeight="bold" text="已选择"/>
+			<s:Label id="servercount"  color="#FE0000" fontWeight="bold" text="0"/>
+			<s:Label  fontWeight="bold" text="台服务器"/>
+		</s:HGroup>
+	</s:Panel>	
+	
+</s:Module>

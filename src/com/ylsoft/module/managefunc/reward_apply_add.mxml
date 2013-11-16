@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:component="com.ylsoft.component.*"
+		  width="100%" height="100%" creationComplete="init()">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.SocketListener;
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.component.BuissnesserChooserMuti;
+			import com.ylsoft.component.BuissnesserChooserSingle;
+			import com.ylsoft.component.special.ItemList;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.managers.PopUpManager;
+			
+			import ronco.base.NetCore31;
+			
+			public var server:Object;
+			private var listModule:String = 'managefunc/reward_apply_list';
+			
+			/*****表单对象****/
+			private var formObj:Object;
+			
+			private var amf:Amf;
+			
+			private function init():void{
+				
+				FlexGlobals.topLevelApplication.form_return.enabled=true;
+				FlexGlobals.topLevelApplication.form_return.addEventListener(MouseEvent.CLICK,returnTable);//定义返回列表方法
+				
+				//监听运营商服务器选择事件
+				this.addEventListener(AppEvent.BUISSNESSER_CHOOSE_COMPLETE,buissnesserChooserComplete);
+				
+			}
+			
+			private function returnTable(evt:MouseEvent):void{
+				FlexGlobals.topLevelApplication.main_right.removeAllElements();
+				ModuleGlobal.Modulefactory_main = new ModuleFactory();
+				ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+				ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+				AppConfig.formoperation = null;	
+				FlexGlobals.topLevelApplication.form_return.removeEventListener(MouseEvent.CLICK,returnTable);
+			}
+			
+			
+			
+			private function buissnesserChooser():void{
+				var bc : BuissnesserChooserSingle = new BuissnesserChooserSingle();
+				bc.width = 800;
+				bc.height = 400;
+				PopUpManager.addPopUp(bc,this,true);
+				PopUpManager.centerPopUp(bc);
+			}
+			
+			private function buissnesserChooserComplete(evt:AppEvent):void{
+				this.servername.text = this.server.name;
+			 	this.formValidate();
+			}
+			
+			private function formValidate():void{
+				var title:String = this.title.text;
+				if(Toolkit.blankClear(title)!='' && this.server != null && Toolkit.blankClear(this.playername.text)){
+					this.save_btn.enabled = true;
+					return;
+				}
+				this.save_btn.enabled = false;
+			}
+			
+			
+			private function itemslistHandler(evt:AppEvent):void{
+				var items:ArrayCollection = new ArrayCollection(amf.getResult() as Array);
+				var itemlist : ItemList = new ItemList();
+				itemlist.width = 800;
+				itemlist.height = 400;
+				PopUpManager.addPopUp(itemlist,this,true);
+				PopUpManager.centerPopUp(itemlist);
+				itemlist.init(items);
+			}
+			
+			private function checkSaveBtnEnabled():void{
+				this.formValidate();
+			}
+			
+			private function save():void{
+				formObj = new Object();
+				amf = new Amf;
+				amf.setFaultMessage('无法连接服务器或者角色名不存在');
+				amf.registerCallBack(saveComplete);
+				
+				formObj.title = this.title.text;
+				formObj.item_num = this.item_num.text;
+				formObj.playername = this.playername.text;
+				formObj.admin = AppConfig.admin;
+				formObj.server = this.server;
+				amf.startService('rewardApplyService','sendRewardsWithPlayer',formObj);
+				
+			}
+			
+			private function saveComplete(evt:AppEvent):void{
+				var result:Number = amf.getResult() as Number;
+				if(result == 0){
+					Alert.show('操作成功');
+				}
+				else if(result > 0){
+					Alert.show('操作失败,服务端内部错误');
+					return;
+				}else{
+					Alert.show('操作失败,玩家不存在');
+					return;
+				}
+				
+				FlexGlobals.topLevelApplication.main_right.removeAllElements();
+				ModuleGlobal.Modulefactory_main = new ModuleFactory();
+				ModuleGlobal.Modulefactory_main.setProgress(UIProgressBar.getInstance());
+				ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+				ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+				AppConfig.formoperation = null;	
+				AppConfig.formid = 0;
+			}
+		]]>
+	</fx:Script>
+	<s:Panel x="0" y="0" width="100%" height="100%" title="奖励申请">
+		<s:Form x="0" y="0" width="100%" height="100%">
+			<s:layout>
+				<s:BasicLayout/>
+			</s:layout>
+			<s:FormItem x="2" y="62" width="257" height="43" label="角色" id="fi_search">
+				<s:layout>
+					<s:HorizontalLayout/>
+				</s:layout>
+				<s:TextInput id="playername" focusOut="checkSaveBtnEnabled()" keyUp="checkSaveBtnEnabled()"/>
+			</s:FormItem>
+			<s:FormItem x="1" y="5" height="39" label="服务器">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<mx:LinkButton label="浏览" color="#036BBC" fontStyle="italic" fontWeight="bold"
+							   click="buissnesserChooser()"	   textDecoration="underline"/>
+				<s:Label text="已选择服务器"/>
+				<s:Label text="" id="servername"/>
+				<s:Label color="#FD0000" text="*"/>
+			</s:FormItem>
+			<s:FormItem x="-1" y="123" width="333" label="标题">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:TextInput id="title" x="10" y="238" width="228" prompt="输入申请标题" keyUp="checkSaveBtnEnabled()" focusOut="checkSaveBtnEnabled()"/>
+				<s:Label color="#FF0000" text="*"/>
+			</s:FormItem>
+			<s:FormItem x="0" y="175" label="元宝">
+				<s:helpContent>
+					<s:VGroup>
+						<s:Label text="仅限数字"></s:Label>
+					</s:VGroup>
+				</s:helpContent>
+				<s:TextInput id="item_num" x="10" y="472" restrict="0-9" focusOut="checkSaveBtnEnabled()" keyUp="checkSaveBtnEnabled()"/>
+			</s:FormItem>
+			<s:FormItem x="1" y="226">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:Button label="申  请" buttonMode="true" enabled="false" id="save_btn" click="save()"/>
+			</s:FormItem>
+		</s:Form>
+	</s:Panel>
+</s:Module>

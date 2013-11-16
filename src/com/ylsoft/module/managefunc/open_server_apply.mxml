@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:common="com.ylsoft.common.*"
+		  xmlns:component="com.ylsoft.component.*" creationComplete="init()"
+		  width="100%" height="100%">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			
+			import ronco.bbxq.ObjAni;
+				private var amf:Amf
+			
+				private var listModule:String = 'managefunc/open_server_list';
+			
+			    private function init():void{
+					this.buissnesser.dataProvider = AppConfig.buissnesser;
+					this.buissnesser.labelField = 'name';
+					this.buissnesser.selectedIndex = -1;
+					
+					this.fb.save_btn.addEventListener(MouseEvent.CLICK,save);
+				}
+			
+			private function save(evt:MouseEvent):void{
+				var _time : String = time.text;
+				if(_time == ''){
+					Alert.show("请选择开服时间");
+					return;
+				}
+				
+				var _buissnesser:Object = this.buissnesser.selectedItem as Object;
+				if(_buissnesser.name == null || _buissnesser.name == ''){
+					Alert.show("请选择运营商");
+					return;
+				}
+				
+				var _servername:String = this.servername.text;
+				if(Toolkit.blankClear(_servername) == ''){
+					Alert.show("请输入服务器名");
+					return;
+				}
+				
+				var _serverip : String= this.serverip.text;
+				if(Toolkit.blankClear(_serverip) == ''){
+					Alert.show("请输入服务器地址");
+					return;
+				}
+				
+				var condition : Object = new Object();
+				condition.time = _time;
+				condition.buissnesser = _buissnesser;
+				condition.servername = _servername;
+				condition.serverip = _serverip;
+				amf = new Amf();
+				amf.registerCallBack(saveComplete);
+				amf.startService('openServerApplyService','save',condition);
+				
+			}
+			
+			private function saveComplete(evt:AppEvent):void{
+				var result:Boolean = amf.getResult() as Boolean;
+				if(result){
+					FlexGlobals.topLevelApplication.main_right.removeAllElements();
+					ModuleGlobal.Modulefactory_main = new ModuleFactory();
+					ModuleGlobal.Modulefactory_main.setProgress(UIProgressBar.getInstance());
+					ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+					ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+					AppConfig.formoperation = null;	
+					AppConfig.formid = 0;
+					Alert.show('操作成功');
+					return;
+				}
+				Alert.show('操作失败');
+			}
+		]]>
+	</fx:Script>
+	<s:Panel x="0" y="0" width="100%" height="100%" title="申请开服">
+		<s:Form x="0" y="0" width="100%" height="90%">
+			<s:FormItem width="364" label="开服时间">
+				<common:MyDateField id="time" width="271"/>
+			</s:FormItem>
+			<s:FormItem label="运营商">
+				<s:ComboBox id="buissnesser"/>
+			</s:FormItem>
+			<s:FormItem width="311" label="服务器名">
+				<s:TextInput id="servername" width="226"/>
+			</s:FormItem>
+			<s:FormItem width="540" label="服务器地址">
+				<s:TextInput id="serverip" width="451" prompt="ip地址或域名"/>
+			</s:FormItem>
+		</s:Form>
+		<component:FormBottom x="0" y="610" width="100%" id="fb">
+		</component:FormBottom>
+	</s:Panel>
+</s:Module>

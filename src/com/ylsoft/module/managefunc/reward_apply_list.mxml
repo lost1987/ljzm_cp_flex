@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:component="com.ylsoft.component.*"
+		  width="100%" height="100%" creationComplete="init()">
+	<!--奖励申请列表-->
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Message;
+			import com.ylsoft.common.Msg_ServerCode;
+			import com.ylsoft.common.Pagelimit;
+			import com.ylsoft.common.SocketListener;
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.component.BuissnesserChooserMuti;
+			import com.ylsoft.component.BuissnesserChooserSingle;
+			import com.ylsoft.component.special.MailDetail;
+			import com.ylsoft.component.special.PlayerDetail;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.EventDelegate;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.Permission;
+			import com.ylsoft.core.SocketService;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.core.FlexGlobals;
+			import mx.events.ListEvent;
+			import mx.formatters.DateFormatter;
+			import mx.managers.PopUpManager;
+			import mx.utils.ObjectUtil;
+			
+			import ronco.base.NetCore31;
+			import ronco.bbxq.ObjAni;
+			private var amf:Amf;
+			private var _amf:Amf;
+			private var op_amf:Amf;
+			public var servers:ArrayCollection = new ArrayCollection;
+			private var _total:Object = new Object;
+			private var columsInited:Boolean = false;
+			private var detailContent:String;
+			
+			private function init():void{
+				//判断权限 如果拥有账号管理权限就拥有审核权限
+				var child_permissions : Object = AppConfig.admin.child_permissions; 
+				if(!Permission.hasPermission(child_permissions['glygl'],4)){
+					op_column.visible = false;
+				}
+				
+				//禁用返回列表
+				FlexGlobals.topLevelApplication.form_return.enabled=false;
+				initColumns();
+				
+				//监听运营商服务器选择事件
+				this.addEventListener(AppEvent.BUISSNESSER_CHOOSE_COMPLETE,buissnesserChooserComplete);
+				
+				this.cb_state.labelField = 'name';
+				this.cb_state.dataProvider = new ArrayCollection([
+					{name:"所有",value:-1},
+					{name:"未处理",value:0},
+					{name:"已拒绝",value:1},
+					{name:"已批准",value:2}
+				]);
+				
+			}
+			
+			public function initDataGrid(evt:AppEvent):void{
+				var result:ArrayCollection
+				if(amf != null){
+					result = new ArrayCollection(amf.getResult() as Array);
+				}
+				else if(sb.amf != null)
+					result = new ArrayCollection(sb.amf.getResult() as Array);
+				
+				this.cd.dataProvider = result;
+				initSubpage();
+				amf = null;
+			}
+			
+			private function initColumns():void{
+				if(!columsInited){
+					var col2:DataGridColumn = new DataGridColumn();
+					col2.dataField = 'title';
+					col2.headerText = '标题';
+					col2.width = 500;
+					
+					var col3:DataGridColumn = new DataGridColumn();
+					col3.dataField = 'dtime';
+					col3.headerText = '申请时间';
+					col3.width = 400;
+					
+					var col4:DataGridColumn = new DataGridColumn();
+					col4.dataField = 'itemnum';
+					col4.headerText = '元宝数量';
+					col4.width = 250;
+					
+					var col5:DataGridColumn = new DataGridColumn();
+					col5.dataField = 'playername';
+					col5.headerText = '角色';
+					col5.width = 400;
+					
+					var col6:DataGridColumn = new DataGridColumn();
+					col6.dataField = 'server_name';
+					col6.headerText = '服务器';
+					col6.width = 250;
+					
+					var col7:DataGridColumn = new DataGridColumn();
+					col7.dataField = 'flagname';
+					col7.headerText = '申请人';
+					col7.width = 400;
+					
+					var col8:DataGridColumn = new DataGridColumn();
+					col8.dataField = 'statename';
+					col8.headerText = '状态';
+					col8.width = 250;
+					
+					var col9:DataGridColumn = new DataGridColumn();
+					col9.dataField = 'opname';
+					col9.headerText = '操作人';
+					col9.width = 400;
+					
+					var col10:DataGridColumn = new DataGridColumn();
+					col10.dataField = 'optime';
+					col10.headerText = '操作时间';
+					col10.width = 400;
+					
+					cd.columns = new Array(col2,col3,col4,col5,col6,col8,col7,col9,col10).concat(cd.columns);
+					columsInited = true;
+				}
+			}
+			
+			
+			private function initSubpage():void{
+				sb.service = 'rewardApplyService';
+				sb.method = 'lists';
+				sb.methodTotal = 'num_rows';
+				sb.container = this;
+				sb.condition = getCondition();
+				sb.initTotal();				
+			}
+			
+			private function getCondition():Object{
+				var condition : Object = new Object();
+				condition.servers = this.servers.source;
+				condition.state = this.cb_state.selectedItem.value;
+				return condition;
+			}
+			
+			private function doSearch():void{
+				this.sb.is_total_exec = false;
+				amf = new Amf();
+				amf.setFaultMessage("通信失败");
+				amf.registerCallBack(initDataGrid);
+				amf.startService('rewardApplyService','lists',new Pagelimit(0,AppConfig.PAGECOUNT),getCondition());
+			}
+			
+			private function addReward(evt:MouseEvent):void{
+				FlexGlobals.topLevelApplication.main_right.removeAllElements();
+				ModuleGlobal.Modulefactory_main = new ModuleFactory();
+				ModuleGlobal.Modulefactory_main.setProgress(UIProgressBar.getInstance());
+				ModuleGlobal.Modulefactory_main.loadModule('managefunc/reward_apply_add',FlexGlobals.topLevelApplication.main_right);
+				ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+				AppConfig.formoperation = AppConfig.FORMADD;
+			}
+			
+			private function buissnesserChooser():void{
+				var bc : BuissnesserChooserMuti = new BuissnesserChooserMuti();
+				bc.width = 800;
+				bc.height = 400;
+				PopUpManager.addPopUp(bc,this,true);
+				PopUpManager.centerPopUp(bc);
+			}
+			
+			private function buissnesserChooserComplete(evt:AppEvent):void{
+				if(this.servers.length > 0){
+					this.search_btn.enabled = true;
+					return;
+				}
+				this.search_btn.enabled = false;
+			}
+			
+			public function doConfirm(item:Object,type:int):void{
+				if(type == 1){
+					Message.confirm('确定要这么做吗?',this,EventDelegate.createWithoutEvent(doAllow,item));
+				}else if(type==2){
+					Message.confirm('确定要这么做吗?',this,EventDelegate.createWithoutEvent(doRefuse,item));
+				}
+			}
+			
+			private function doAllow(...args):void{
+				var item:Object = this.cd.selectedItem;
+				op_amf = new Amf;
+				op_amf.setFaultMessage('操作失败');
+				op_amf.registerCallBack(AllowHandler);
+				op_amf.startService('syslogService','updateLogState',item,2,AppConfig.admin.flagname);				
+			}
+			
+			
+			private function doRefuse(...args):void{
+				var item:Object = this.cd.selectedItem;
+				op_amf = new Amf;
+				op_amf.setFaultMessage('操作失败');
+				op_amf.registerCallBack(RefuseHandler);
+				op_amf.startService('syslogService','updateLogState',item,1,AppConfig.admin.flagname);				
+			}
+			
+			
+			private function AllowHandler(evt:AppEvent):void{
+				var stat:Number = op_amf.getResult() as Number;
+				switch(stat){
+					case 1 : Alert.show('操作成功');
+								var temp:Object = this.cd.selectedItem;
+								temp.statename = '已批准';
+								temp._enabled = false;
+								temp.opname = AppConfig.admin.flagname;
+								this.cd.invalidateList();
+								break;
+					case -3 : Alert.show('操作失败:充值金额小于或等于0');
+								  break;
+					case -1: Alert.show('操作失败:验证失败');
+						         break;
+					case -5: Alert.show('操作失败:服务器ID或运营商ID错误');
+								break;
+					case -2: Alert.show('操作失败:玩家账号不存在');
+								break;
+					case -10: Alert.show('操作失败:未知错误');
+								break;
+					default: Alert.show('操作失败,代码'+stat);
+				}
+				
+			}
+			
+			private function RefuseHandler(evt:AppEvent):void{
+				if(op_amf.getResult() as Number  == 1){
+					Alert.show('操作成功');
+					var temp:Object = this.cd.selectedItem;
+					temp.statename = '已拒绝';
+					temp._enabled = false;
+					temp.opname = AppConfig.admin.flagname;
+					this.cd.invalidateList();
+				}else{
+					Alert.show('操作失败');
+				}
+			}
+		]]>
+	</fx:Script>
+	<s:Panel width="100%" height="100%" dropShadowVisible="true" title="奖励申请">
+		<component:Search x="0" top="0">
+		</component:Search>
+		<mx:DataGrid id="cd" left="0" height="86%" width="100%" verticalCenter="15">
+			<mx:columns>
+				<mx:DataGridColumn headerText="执行操作"  width="200" id="op_column">
+				   <mx:itemRenderer>
+					   <fx:Component>
+						   <mx:HBox paddingLeft="5">
+							   <mx:Button id="allow_btn" label="批准" click="outerDocument.doConfirm(this,1)" buttonMode="true" enabled="{data._enabled}" />
+							   <mx:Button id="refuse_btn" label="拒绝" click="outerDocument.doConfirm(this,2)" buttonMode="true" enabled="{data._enabled}"/>   
+						   </mx:HBox>
+					   </fx:Component>
+				   </mx:itemRenderer>
+				</mx:DataGridColumn>
+			</mx:columns>
+		</mx:DataGrid>
+		<component:Subpages id="sb" x="0" bottom="0">
+		</component:Subpages>
+		<s:HGroup right="2" top="2" width="284">
+			<s:Button id="search_btn"  label="查询" click="doSearch()" enabled="false" buttonMode="true"/>
+			<s:Button  label="选择运营商和服务器" click="buissnesserChooser()" buttonMode="true"/>
+			<s:Button label="添加" click="addReward(event)" buttonMode="true"/>
+		</s:HGroup>
+		<s:HGroup y="34" right="0" width="286">
+			<s:Label  fontWeight="bold" text="已选择"/>
+			<s:Label id="servercount"  color="#FE0000" fontWeight="bold" text="0"/>
+			<s:Label  fontWeight="bold" text="台服务器"/>
+			
+		</s:HGroup>
+		<s:Label x="10" y="10" text="状态"/>
+		<mx:ComboBox id="cb_state" x="45" y="9" width="85"/>
+	</s:Panel>	
+</s:Module>
+

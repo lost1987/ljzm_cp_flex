@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:component="com.ylsoft.component.*"
+		  width="100%" height="100%" creationComplete="init()">
+	<!--礼包日志-->
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Color;
+			import com.ylsoft.common.Message;
+			import com.ylsoft.common.Msg_ServerCode;
+			import com.ylsoft.common.Pagelimit;
+			import com.ylsoft.common.SocketListener;
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.common.XWindow;
+			import com.ylsoft.component.BuissnesserChooserMuti;
+			import com.ylsoft.component.BuissnesserChooserSingle;
+			import com.ylsoft.component.special.PlayerDetail;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.SocketService;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.core.FlexGlobals;
+			import mx.events.ListEvent;
+			import mx.formatters.DateFormatter;
+			import mx.managers.PopUpManager;
+			import mx.utils.ObjectUtil;
+			
+			import ronco.base.NetCore31;
+			import ronco.bbxq.ObjAni;
+			private var amf:Amf;
+			private var _amf:Amf;
+			private var detail_amf:Amf;
+			public var server:Object;
+			private var _total:Object = new Object;
+			private var _amf_childtypes:Amf;
+			private var _childtypes:ArrayCollection;
+			
+			private function init():void{
+				//禁用返回列表
+				FlexGlobals.topLevelApplication.form_return.enabled=false;
+				initColumns();
+				
+				//监听运营商服务器选择事件
+				this.addEventListener(AppEvent.BUISSNESSER_CHOOSE_COMPLETE,buissnesserChooserComplete);
+				this.type.labelField = 'name';
+				this.type.dataProvider = new ArrayCollection([
+					{name:"所有",value:"-1"},
+					{name:"收益",value:"0"},
+					{name:"损失",value:"1"}
+				]);
+				this.type.selectedIndex = 0;
+				
+				_amf_childtypes = new Amf;
+				_amf_childtypes.setFaultMessage('无法读取子分类');
+				_amf_childtypes.registerCallBack(initChildTypes);
+				_amf_childtypes.startService('logEventsService','lists');
+				
+				//给datagrid绑定双击事件
+				this.cd.dg.addEventListener(ListEvent.ITEM_DOUBLE_CLICK,showdetail);
+			}
+			
+			public function initDataGrid(evt:AppEvent):void{
+				var result:ArrayCollection
+				if(amf != null){
+					result = new ArrayCollection(amf.getResult() as Array);
+				}
+				else if(sb.amf != null)
+					result = new ArrayCollection(sb.amf.getResult() as Array);
+				
+				cd.initData(result);
+				initSubpage();
+				amf = null;
+			}
+			
+			private function initColumns():void{
+				
+				var col1:DataGridColumn = new DataGridColumn();
+				col1.dataField = 'id';
+				col1.headerText = '角色ID';
+				col1.width = 120;
+				
+				var col2:DataGridColumn = new DataGridColumn();
+				col2.dataField = 'name';
+				col2.headerText = '角色名';
+				col2.width = 120;
+				
+				var col3:DataGridColumn = new DataGridColumn();
+				col3.dataField = 'account_name';
+				col3.headerText = '账号名';
+				col3.width = 120;
+				
+				var col4:DataGridColumn = new DataGridColumn();
+				col4.dataField = 'servername';
+				col4.headerText = '服务器标识';
+				col4.width = 120;
+				
+				var col5:DataGridColumn = new DataGridColumn();
+				col5.dataField = 'levels';
+				col5.headerText = '等级';
+				col5.width = 120;
+				
+				
+				var col6:DataGridColumn = new DataGridColumn();
+				col6.dataField = 'typename';
+				col6.headerText = '方式';
+				col6.width = 120;
+				
+				var col7:DataGridColumn = new DataGridColumn();
+				col7.dataField = 'detail';
+				col7.headerText = '途径';
+				col7.width = 120;
+				
+				var col9:DataGridColumn = new DataGridColumn();
+				col9.dataField = 'giftbagchange';
+				col9.headerText = '变化';
+				col9.width = 120;
+				
+				var col10:DataGridColumn = new DataGridColumn();
+				col10.dataField = 'time';
+				col10.headerText = '时间';
+				col10.width = 120;
+				
+				
+				cd.dg.columns = cd.dg.columns.concat(new Array(col1,col2,col3,col4,col5,col6,col7,col9,col10));
+			}
+			
+			
+			private function initSubpage():void{
+				sb.service = 'giftbagDailyService';
+				sb.method = 'lists';
+				sb.methodTotal = 'num_rows';
+				sb.container = this;
+				sb.condition = getCondition();
+				sb.initTotal();				
+			}
+			
+			
+			private function buissnesserChooser():void{
+				var bc : BuissnesserChooserSingle = new BuissnesserChooserSingle();
+				bc.width = 800;
+				bc.height = 400;
+				XWindow.getInstance().addWindow(bc,this).show();
+			}
+			
+			private function buissnesserChooserComplete(evt:AppEvent):void{
+				if(server!=null){
+					this.lb_servername.text = server.name;
+					this.search_btn.enabled = true;
+				}
+				this.search_btn.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+			}
+			
+			private function getCondition():Object{
+				var condition : Object = new Object();
+				condition.server = server;
+				condition.account_name = this.t_account_name.text;
+				condition.starttime = this.starttime.text;
+				condition.endtime = this.endtime.text;
+				condition.type = this.type.selectedItem.value;
+				
+				var childTypes:Object = this.child_types.selectedItem;
+				condition.child_type = childTypes!=null ? childTypes.id : '';
+				condition.level_start = this.level_start.value == 0 ? '' : this.level_start.value;
+				condition.level_limit = this.level_limit.value == 0 ? '' : this.level_limit.value;
+				condition.vip_start = this.vip_start.value == -1 ? '' : this.vip_start.value;
+				condition.vip_limit = this.vip_limit.value == -1 ? '' : this.vip_limit.value;
+				
+				return condition;
+			}
+			
+			private function doSearch():void{
+				this.sb.is_total_exec = false;
+				amf = new Amf();
+				amf.setFaultMessage("通信失败");
+				amf.registerCallBack(initDataGrid);
+				amf.startService('giftbagDailyService','lists',new Pagelimit(0,AppConfig.PAGECOUNT),getCondition());
+			}
+			
+			private function checkServerChooser(evt:Event):void{
+				if(this.server == null || this.starttime.text == '' || this.endtime.text == '')
+					this.search_btn.enabled = false;
+				else{
+					var parttern : RegExp = /-|:/g;
+					var startdate:String = this.starttime.text.replace(parttern,'');
+					var enddate : String = this.endtime.text.replace(parttern,'');
+					if(int(startdate) > int(enddate)){
+						Alert.show('起始日期不能大于结束日期');
+						this.search_btn.enabled = false;return;
+					}
+					
+					var level_start : Number  =  this.level_start.value;
+					var level_limit : Number = this.level_limit.value;
+					if(level_start > level_limit){
+						Alert.show('等级选择不正确');
+						this.search_btn.enabled = false;return;
+					}
+					
+					this.search_btn.enabled = true;
+				}
+			}
+			
+			private function loadChildTypes():void{
+				var type:Object = this.type.selectedItem;
+				if(type != null){
+					var typenum : int = type.value;
+					if(typenum == -1){
+						this.child_types.dataProvider = null;
+						this.child_types.textInput.text = '';
+						this.child_types.enabled=false;
+					}else{
+						this.child_types.enabled = true;
+						this.child_types.dataProvider = this._childtypes;
+					}
+				}
+			}
+			
+			private function initChildTypes(evt:AppEvent):void{
+				_childtypes = new ArrayCollection(_amf_childtypes.getResult() as Array);
+				if(_childtypes!=null){
+					this.child_types.labelField='name';
+					this.child_types.dataProvider = _childtypes;
+					this.child_types.selectedIndex = -1;
+					this.child_types.textInput.setStyle('color',Color.green);
+					this.child_types.addEventListener(KeyboardEvent.KEY_UP,is_type_error);
+					this.child_types.addEventListener(Event.CHANGE,is_type_error);
+					this.type.addEventListener(Event.CHANGE,is_type_error);
+				}
+			}
+			
+			private function is_type_error(evt:Event):void{
+				for each(var obj : Object in this._childtypes){
+					if(obj.name == this.child_types.textInput.text || this.child_types.textInput.text==''){
+						this.child_types.errorString = "";
+						if(this.server != null)
+							this.search_btn.enabled = true;
+						break;
+					}else{
+						this.child_types.errorString="类型错误,请重新输入或选择";
+						this.search_btn.enabled = false;
+					}
+				}
+			}
+			
+			private function showdetail(evt:ListEvent):void{
+				var selectItem : Object = this.cd.dg.selectedItem;
+				if(selectItem == null)return;
+				
+				var id : uint = selectItem.id1;
+				
+				detail_amf = new Amf();
+				detail_amf.setFaultMessage("无法读取用户信息");
+				detail_amf.registerCallBack(showdetailhandler);
+				detail_amf.startService('playerService','detail',id,server);
+			}
+			
+			private function showdetailhandler(evt:AppEvent):void{
+				var player:Object = detail_amf.getResult() as Object;
+				if(player != null){
+					var pd:PlayerDetail = new PlayerDetail();
+					pd.width = 1000;
+					pd.height = 500;
+					XWindow.getInstance().addWindow(pd,this).show();
+					pd.setPlayerDetail(player,server);
+				}
+			}
+		]]>
+	</fx:Script>
+	<s:Panel width="100%" height="100%" dropShadowVisible="true" title="礼包日志">
+		<component:Search x="0" top="0">
+		</component:Search>
+		<component:CB_Datagrid id="cd" left="0" height="86%" verticalCenter="15">
+		</component:CB_Datagrid>
+		<component:Subpages id="sb" x="0" bottom="0">
+		</component:Subpages>
+		<s:HGroup right="2" top="2" width="215">
+			<s:Button id="search_btn"  label="查询" click="doSearch()" enabled="false" buttonMode="true"/>
+			<s:Button  label="选择运营商和服务器" click="buissnesserChooser()" buttonMode="true"/>
+		</s:HGroup>
+		<s:HGroup y="34" right="0" width="217">
+			<s:Label  fontWeight="bold" text="已选择服务器"/><s:Label textAlign="center" id="lb_servername" color="#FF0000" text=""/>
+		</s:HGroup>
+		<s:TextInput x="290" top="2" id="t_account_name"/>
+		<s:Label left="210" top="6" text="账号或角色名"/>
+		<s:Label left="10" top="6" text="开始"/>
+		<s:Label left="10" top="36" text="结束"/>
+		<mx:DateField id="starttime" left="42" top="2" width="160" change="checkServerChooser(event)"
+					  dayNames="[日,一,二,三,四,五,六]" formatString="YYYY-MM-DD"
+					  monthNames="[一月,二月,三月,四月,五月,六月,七月,八月,九月,十月,十一月,十二月]"/>
+		<mx:DateField id="endtime" left="42" top="29" width="160" change="checkServerChooser(event)"
+					  dayNames="[日,一,二,三,四,五,六]" formatString="YYYY-MM-DD"
+					  monthNames="[一月,二月,三月,四月,五月,六月,七月,八月,九月,十月,十一月,十二月]"/>
+		<s:Label x="210" y="39" text="类型"/>
+		<mx:ComboBox id="type" x="290" y="32" width="128" change="loadChildTypes()"/>
+		<s:Label x="426" y="6" text="等级"/>
+		<mx:NumericStepper id="level_start" x="458" y="1" maximum="200" minimum="0"/>
+		<mx:NumericStepper id="level_limit" x="563" y="1" maximum="99" minimum="0"/>
+		<s:Label x="534" y="8" text="~~"/>
+		<s:ComboBox id="child_types" x="426" y="32" width="202"/>
+		<s:Label x="648" y="7" text="VIP"/>
+		<mx:NumericStepper id="vip_start" x="676" y="1" maximum="12" minimum="-1" value="-1"/>
+		<mx:NumericStepper id="vip_limit" x="761" y="1" maximum="12" minimum="-1" value="-1" />
+		<s:Label x="738" y="6" text="~~"/>
+	</s:Panel>	
+	
+</s:Module>
+

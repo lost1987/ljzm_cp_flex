@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" creationComplete="init()"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:html="com.ylsoft.html.*"
+		  width="100%" height="100%" backgroundColor="#F8F5D0">
+	<s:layout>
+		<s:BasicLayout/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.crypto.MD5;
+			import com.ylsoft.core.AppConfig;
+			
+			[Bindable]
+			private var key:String ;
+			[Bindable]
+			private var time:Number;
+			
+			private function init():void
+			{
+				time  = new Date().time;
+				key = MD5.hash(time.toString().substr(0,10)+AppConfig.INFO_PWD);//time和php time()函数获取的数值不同 比php的多3位 这里做下处理
+			}
+		]]>
+	</fx:Script>
+	<s:Panel x="0" y="0" width="100%" height="100%" color="#062C41" title="服务器状态">
+		<html:IFrame left="10" top="10" width="98%" height="100%" source="{AppConfig.INFO_URL}?key={key}|{time}">
+		</html:IFrame>
+	</s:Panel>
+</s:Module>

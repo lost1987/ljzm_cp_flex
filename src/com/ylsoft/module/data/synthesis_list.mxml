@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"  
+		  xmlns:component="com.ylsoft.component.*"
+		  width="100%" height="100%" creationComplete="init()">
+	<!--综合数据-->
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Excel;
+			import com.ylsoft.common.Message;
+			import com.ylsoft.common.Pagelimit;
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.common.XWindow;
+			import com.ylsoft.component.BuissnesserChooserMuti;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.core.FlexGlobals;
+			import mx.formatters.DateFormatter;
+			import mx.managers.PopUpManager;
+			import mx.utils.ObjectUtil;
+			private var amf:Amf;
+			private var _amf:Amf;
+			public var servers:ArrayCollection = new ArrayCollection;
+			private var _total:Object = new Object;
+			private var _dateformat:DateFormatter = new DateFormatter();
+			
+			private function init():void{
+				//禁用返回列表
+				FlexGlobals.topLevelApplication.form_return.enabled=false;
+				initColumns();
+				_dateformat.formatString = 'YYYY-MM-DD';
+				this.addEventListener(AppEvent.BUISSNESSER_CHOOSE_COMPLETE,buissnessChooseComplete);
+			}
+			
+			public function initDataGrid(evt:AppEvent):void{
+				var result:ArrayCollection
+				if(amf != null){
+					result = new ArrayCollection(amf.getResult() as Array);
+				}
+				else if(sb.amf != null)
+					result = new ArrayCollection(sb.amf.getResult() as Array);
+				
+				cd.initData(result);
+				initSubpage();
+				amf = null;
+				FlexGlobals.topLevelApplication.dispatchEvent(new AppEvent(AppEvent.EXCEL_EXPORT_READY));
+			}
+			
+			private function initColumns():void{
+				var col1:DataGridColumn = new DataGridColumn();
+				col1.dataField = 'date';
+				col1.headerText = '日期';
+				
+				var col2:DataGridColumn = new DataGridColumn();
+				col2.dataField = 'registernum';
+				col2.headerText = '注册人数';
+				
+				var col3:DataGridColumn = new DataGridColumn();
+				col3.dataField = 'createnum';
+				col3.headerText = '创建人数';
+				
+				var col4:DataGridColumn = new DataGridColumn();
+				col4.dataField = 'loginnum';
+				col4.headerText = '登录人数';
+				
+				var col5:DataGridColumn = new DataGridColumn();
+				col5.dataField = 'maxonline';
+				col5.headerText = '最高在线';
+				
+				var col6:DataGridColumn = new DataGridColumn();
+				col6.dataField = 'aveonline';
+				col6.headerText = '平均在线';
+				
+				var col7:DataGridColumn = new DataGridColumn();
+				col7.dataField = 'recharge';
+				col7.headerText = '充值元宝';
+				
+				var col8:DataGridColumn = new DataGridColumn();
+				col8.dataField = 'rechargeperson';
+				col8.headerText = '充值人数';
+				
+				var col9 : DataGridColumn = new DataGridColumn();
+				col9.dataField = 'rechargenum';
+				col9.headerText = '充值次数';
+				
+				var col10:DataGridColumn = new DataGridColumn();
+				col10.dataField = 'newrecharge';
+				col10.headerText = '新增充值元宝';
+				
+				var col11:DataGridColumn = new DataGridColumn();
+				col11.dataField = 'newrechargeperson';
+				col11.headerText = '新增充值人数';
+				
+				var col12:DataGridColumn = new DataGridColumn();
+				col12.dataField = 'oldlogin';
+				col12.headerText = '老用户登录';
+				
+				var col13:DataGridColumn = new DataGridColumn();
+				col13.dataField = 'oldrecharge';
+				col13.headerText = '老用户充值';
+				
+				var col14:DataGridColumn = new DataGridColumn();
+				col14.dataField = 'consumption';
+				col14.headerText = '消费元宝';
+				
+				var col15:DataGridColumn = new DataGridColumn();
+				col15.dataField = 'overyuanbao';
+				col15.headerText = '剩余元宝';
+				
+				var col16:DataGridColumn = new DataGridColumn();
+				col16.dataField = 'arpu';
+				col16.headerText = 'ARPU值';
+				
+				var col17:DataGridColumn = new DataGridColumn();
+				col17.dataField = 'newarpu';
+				col17.headerText = '首冲ARPU值';
+				
+				var col18:DataGridColumn = new DataGridColumn();
+				col18.dataField = 'rechargeratio';
+				col18.headerText = '付费率';
+				
+				var col19:DataGridColumn = new DataGridColumn();
+				col19.dataField = 'overyuanbao72';
+				col19.headerText = '活跃用户剩余元宝';
+				
+				cd.dg.columns = cd.dg.columns.concat(new Array(col1,col2,col3,col4,col5,col6,col7,col8,col9,col10,col11,col12,col13,col14,col15,col16,col17,col18,col19));
+			}
+			
+			
+			private function initSubpage():void{
+				sb.service = 'complexDataService';
+				sb.method = 'lists';
+				sb.methodTotal = 'num_rows';
+				sb.container = this;
+				sb.condition = getCondition();
+				sb.initTotal();				
+			}
+			
+			private function buissnesserChooser():void{
+				var bc : BuissnesserChooserMuti = new BuissnesserChooserMuti();
+				bc.width = 800;
+				bc.height = 400;
+				XWindow.getInstance().addWindow(bc,this).show();
+			}
+			
+			private function getCondition():Object{
+				var condition : Object = new Object();
+				condition.starttime = this.starttime.text;
+				condition.endtime = this.endtime.text;
+				var _server_ids:String = '';
+				for each(var obj:Object in this.servers){
+					_server_ids += obj.id + ',';
+				}
+				_server_ids = _server_ids.substr(0,_server_ids.length-1);
+				condition.server_ids = _server_ids;
+				return condition;
+			}
+			
+			private function doSearch():void{
+					this.sb.is_total_exec = false;
+					amf = new Amf();
+					amf.setFaultMessage("通信失败");
+					amf.registerCallBack(initDataGrid);
+					amf.startService('complexDataService','lists',new Pagelimit(0,AppConfig.PAGECOUNT),getCondition());
+					
+					//总计栏
+					_amf = new Amf;
+					_amf.setFaultMessage('通信失败');
+					_amf.registerCallBack(initTotal);
+					_amf.startService('complexDataService','total',getCondition());
+				
+			}
+			
+			private function initTotal(evt:AppEvent):void{
+				_total  = _amf.getResult() as Object;
+				this.registernum.text = _total['registernum'];
+				this.createnum.text = _total['createnum'];
+				this.loginnum.text = _total['loginnum'];
+				this.maxonline.text = _total['maxonline'];
+				this.aveonline.text = _total['aveonline'];
+				this.recharge.text = _total['recharge'];
+				this.rechargenum.text = _total['rechargenum'];
+				this.newrecharge.text = _total['newrecharge'];
+				this.newrechargeperson.text = _total['newrechargeperson'];
+				this.oldlogin.text = _total['oldlogin'];
+				this.oldrecharge.text = _total['oldrecharge'];
+				this.consumption.text = _total['consumption'];
+				this.overyuanbao.text = _total['overyuanbao'];
+				this.arpu.text = _total['arpu'];
+				this.newarpu.text = _total['newarpu'];
+				this.ratio.text = _total['rechargeratio'];
+				this.overyuanbao72.text = _total['overyuanbao72'];
+			}
+			
+			private function checkServerChooser(evt:Event):void{
+				if(this.servers.length == 0 || this.starttime.text == '' || this.endtime.text == '')
+					this.search_btn.enabled = false;
+				else{
+					var parttern : RegExp = /-|:/g;
+					var startdate:String = this.starttime.text.replace(parttern,'');
+					var enddate : String = this.endtime.text.replace(parttern,'');
+					if(int(startdate) > int(enddate)){
+						Alert.show('起始日期不能大于结束日期');
+						this.search_btn.enabled = false;return;
+					}
+					
+					this.search_btn.enabled = true;
+					FlexGlobals.topLevelApplication.dispatchEvent(new AppEvent(AppEvent.EXCEL_EXPORT_READY));
+				}
+			}
+			
+			private function search_today():void{
+				var today:String = this._dateformat.format(new Date);
+				this.starttime.text = today;
+				this.endtime.text = today;
+				this.search_btn.enabled = true;
+				this.search_btn.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+			}
+			
+			private function search_seven():void{
+				var oneday : Number = 60 * 60 * 24 *1000;
+				var datenow:Date = new Date();
+				var enddate: String = this._dateformat.format(datenow);
+				var startdate : String = this._dateformat.format(new Date(datenow.time - 7*oneday));
+				this.starttime.text = startdate;
+				this.endtime.text = enddate;
+				this.search_btn.enabled = true;
+				this.search_btn.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+			}
+			
+			private function buissnessChooseComplete(evt:AppEvent):void{
+				var starttime:String = this.starttime.text;
+				var endtime:String = this.endtime.text;
+				if(starttime!='' && endtime !='' && this.servers.length >0){
+					this.search_btn.enabled = true;
+					this.today_btn.enabled = true;
+					this.seven_btn.enabled = true;
+					FlexGlobals.topLevelApplication.dispatchEvent(new AppEvent(AppEvent.EXCEL_EXPORT_READY));
+				}else if(this.servers.length > 0){
+					this.today_btn.enabled = true;
+					this.seven_btn.enabled = true;
+				}
+				else {
+					this.search_btn.enabled = false;
+					this.today_btn.enabled = false;
+					this.seven_btn.enabled = false;
+				}
+			}
+			
+			public function exportExcel(evt:AppEvent):void{
+				var excel : Excel = Excel.getInstance();
+				excel.address = AppConfig.EXCEL_GATEWAY;
+				excel.dgcolumns = this.cd.dg;
+				excel.start_time = this.starttime.text;
+				excel.end_time = this.endtime.text;
+				excel.excel_name = '综合数据';
+				excel.module_key = AppConfig.module_key;
+				var server_ids:Array = [];
+				for each(var server:Object in this.servers){
+					 server_ids.push(server.id);
+				}
+				excel.server_id = server_ids.join(',');
+				excel.httpBuildQuery();
+				FlexGlobals.topLevelApplication.btn_excel_export.enabled = true;
+			}
+			
+		]]>
+	</fx:Script>
+	<s:Panel width="100%" height="100%" dropShadowVisible="true" title="综合数据">
+		<component:Search x="0" top="0">
+		</component:Search>
+		<component:CB_Datagrid id="cd" height="70%" verticalCenter="-15">
+		</component:CB_Datagrid>
+		<component:Subpages id="sb" x="0" bottom="0">
+		</component:Subpages>
+		<s:HGroup right="2" top="2" width="300">
+			<s:Button id="search_btn"  label="查询" click="doSearch()" enabled="false" buttonMode="true"/>
+			<s:Button  label="选择运营商和服务器" click="buissnesserChooser()" buttonMode="true"/>
+		</s:HGroup>
+		<mx:DateField x="129" y="2" width="155" yearNavigationEnabled="true" buttonMode="true" id="starttime" change="checkServerChooser(event)"  monthNames="[一月,二月,三月,四月,五月,六月,七月,八月,九月,十月,十一月,十二月]"  dayNames="[日,一,二,三,四,五,六]"  formatString="YYYY-MM-DD"/>
+		<mx:DateField x="129" y="29" width="155" yearNavigationEnabled="true" buttonMode="true" id="endtime"  change="checkServerChooser(event)" monthNames="[一月,二月,三月,四月,五月,六月,七月,八月,九月,十月,十一月,十二月]"  dayNames="[日,一,二,三,四,五,六]" formatString="YYYY-MM-DD"/>
+		<s:Label x="97" y="7" text="开始" />
+		<s:Label x="97" y="34" text="结束"/>
+		<mx:LinkButton x="10" y="4" label="今天" enabled="false" id="today_btn" click = "search_today()"/>
+		<mx:LinkButton x="10" y="30" label="最近7天" enabled="false" id="seven_btn" click = "search_seven()"/>
+		<s:TileGroup id="tileGroup" left="5" bottom="25" width="100%" height="60">
+			<s:Label color="#FD0000" verticalAlign="middle" fontWeight="bold" text="总计"/>
+			<s:HGroup verticalAlign="middle"><s:Label text="注册人数" height="12"  verticalAlign="middle"/><s:Label id="registernum" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="创建人数" height="12"  verticalAlign="middle"/><s:Label id="createnum" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="登录人数" height="12" verticalAlign="middle"/><s:Label id="loginnum" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="最高在线" height="12" verticalAlign="middle"/><s:Label id="maxonline" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="平均在线" height="12" verticalAlign="middle"/><s:Label id="aveonline" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="充值元宝" height="12" verticalAlign="middle"/><s:Label id="recharge" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="充值次数" height="12" verticalAlign="middle"/><s:Label id="rechargenum" color="#035B8D"  height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="新增充值元宝" height="12" verticalAlign="middle"/><s:Label id="newrecharge" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="新增充值人数" height="12" verticalAlign="middle"/><s:Label id="newrechargeperson" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="老用户登录" height="12" verticalAlign="middle"/><s:Label id="oldlogin" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="老用户充值" height="12" verticalAlign="middle"/><s:Label id="oldrecharge" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="消费元宝" height="12" verticalAlign="middle"/><s:Label id="consumption" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="剩余元宝" height="12"  verticalAlign="middle"/><s:Label id="overyuanbao" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="活跃用户剩余元宝" height="12" verticalAlign="middle"/><s:Label id="overyuanbao72" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="ARPU" height="12" verticalAlign="middle"/><s:Label id="arpu" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="首冲ARPU" height="12" verticalAlign="middle"/><s:Label id="newarpu" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+			<s:HGroup verticalAlign="middle"><s:Label text="付费率" height="12" verticalAlign="middle"/><s:Label id="ratio" color="#035B8D" height="12" text="N/A" verticalAlign="middle"/><mx:VRule height="12"/></s:HGroup>
+		</s:TileGroup>
+		<s:HGroup y="34" right="0" width="302">
+		<s:Label  fontWeight="bold" text="已选择"/>
+		<s:Label id="servercount"  color="#FE0000" fontWeight="bold" text="0"/>
+		<s:Label  fontWeight="bold" text="台服务器"/>
+		</s:HGroup>
+	</s:Panel>	
+	
+</s:Module>

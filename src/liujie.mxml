@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   width="100%" height="100%" minWidth="955" minHeight="600"
+			   applicationComplete="initApplication()" backgroundColor="#F5F5F5"
+			   pageTitle="六界数据分析系统-艺龙世纪">
+
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Style>
+		@namespace mx "library://ns.adobe.com/flex/mx";
+		
+		@font-face{
+			src: url("com/ylsoft/assets/font/chart.ttf");
+			fontFamily: myChartFont;
+			embedAsCFF: false; 
+		}
+	</fx:Style>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.ComponentExportImage;
+			import com.ylsoft.common.Excel;
+			import com.ylsoft.common.UITip;
+			import com.ylsoft.common.XWindow;
+			import com.ylsoft.component.special.UpdatePWD;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import flashx.textLayout.compose.IVerticalJustificationLine;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.ArrayList;
+			import mx.controls.Alert;
+			import mx.core.UIComponent;
+			import mx.events.ModuleEvent;
+			import mx.managers.PopUpManager;
+			import mx.modules.IModuleInfo;
+			import mx.modules.ModuleManager;
+			
+			public var modulefactory : ModuleFactory;
+			public var amf:Amf;
+			
+		/*	[Bindable]
+			[Embed(source="com/qijinsoft/assets/images/refresh.png")]
+			public var icon_refresh:Class;
+			
+			[Bindable]
+			[Embed(source="com/qijinsoft/assets/images/logout.png")]
+			public var icon_logout:Class;
+			
+			[Bindable]
+			[Embed(source="com/qijinsoft/assets/images/return.png")]
+			public var icon_return:Class;*/
+			
+			private function initApplication():void{
+				
+				//隐藏界面 
+				main_group.visible = false;
+				
+				ModuleGlobal.Modulefactory_login = new ModuleFactory();
+				ModuleGlobal.Modulefactory_login.setProgress(UIProgressBar.getInstance());
+				ModuleGlobal.Modulefactory_login.loadModule('login',this.main_container);
+				ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_login);
+				
+				//全局监听
+				this.initGlobalListeners();
+			}
+			
+			
+			private function logout(evt:MouseEvent):void{
+				this.main_group.visible = false;
+				this.main_left.removeAllElements();
+				this.main_right.removeAllElements();
+				ModuleGlobal.Modulefactory_login.setProgress(UIProgressBar.getInstance());
+				ModuleGlobal.Modulefactory_login.loadModule('login',this.main_container);
+				ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_left,ModuleGlobal.Modulefactory_main);
+				ModuleGlobal.unloadModules();
+			}
+			
+			private function reload(evt:MouseEvent):void{
+				if(ModuleGlobal.Modulefactory_main != null){
+					this.main_right.removeAllElements();
+					ModuleGlobal.Modulefactory_main.reload();
+				}
+			}
+			
+			private function update_pwd():void{
+				var up : UpdatePWD = new UpdatePWD();
+				up.width = 400;
+				up.height = 250;
+				XWindow.getInstance().addWindow(up,this).show();
+			}
+			
+			private function initGlobalListeners():void{
+				//监听excel是否能导出的事件 
+				this.addEventListener(AppEvent.EXCEL_EXPORT_READY,excel_export_ready);
+				this.btn_excel_export.addEventListener(MouseEvent.CLICK,exportExcel);
+				
+				//监听UIRemoteObject的发送事件,发送之前启用遮罩,通信完毕的话,去除遮罩
+				this.addEventListener(AppEvent.UIREMOTEOBJECT_SEND,UITip.getInstance().showLoadingTip);
+				this.addEventListener(AppEvent.UIREMOTEOBJECT_FINISH,UITip.getInstance().removeLoadingTip);
+				
+				//监听组件图片的导出
+				this.addEventListener(AppEvent.COMPONENT_EXPORT_IMAGE_READY,component_export_image_ready);
+				this.btn_component_image_export.addEventListener(MouseEvent.CLICK,exportComponentImage);
+			}
+			
+			private function excel_export_ready(evt:AppEvent):void{
+				this.main_right.getElementAt(0)['exportExcel'].apply(null,[evt]);
+			}
+			
+			private function exportExcel(evt:MouseEvent):void{
+				Excel.getInstance().makeExcel();
+			}
+			
+			private function component_export_image_ready(evt:AppEvent):void{
+				this.main_right.getElementAt(0)['exportComponentImage'].apply(null,[evt]);
+			}
+			
+			private function exportComponentImage(evt:MouseEvent):void{
+				ComponentExportImage.getInstance().saveLocal();
+			}
+			
+		]]>
+	</fx:Script>
+	<s:BorderContainer id="main_container" width="99%" height="99%" backgroundColor="#F5F5F5"
+					   borderVisible="false" dropShadowVisible="false" horizontalCenter="1"
+					   verticalCenter="0">
+		<s:HGroup id="main_group" left="0" top="0" width="100%" height="100%">
+			<s:BorderContainer id="main_left" width="16%" height="100%" backgroundColor="#F5F5F5"
+							   borderVisible="false">
+			</s:BorderContainer>
+			<s:VGroup width="83%"  height="100%">
+				  <s:BorderContainer id="main_top" width="100%" height="7%" backgroundColor="#DCDCDC"
+								   borderVisible="true" dropShadowVisible="false">
+					<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle" height="100%">
+						<s:Group x="445" y="1" width="112" height="100%">
+							<s:Image x="10" y="8" width="25" height="25" smooth="true"
+									 smoothingQuality="high"
+									 source="@Embed('com/ylsoft/assets/images/image.png')"/>
+							<mx:LinkButton id="btn_component_image_export" x="36" y="7" width="67"
+										   label="导出图片" enabled="false"/>
+						</s:Group>
+						
+					<s:Group x="661" width="95" height="100%">
+						<s:Image x="-1" y="8" width="25" height="25"
+								 source="@Embed('com/ylsoft/assets/images/File.png')"/>
+					<mx:LinkButton x="22" y="8" width="67" id="btn_excel_export" enabled="false" label="EXCEL"/>
+					</s:Group>
+						
+				    <s:Group x="744" width="109" height="100%">
+					<s:Image x="8" y="8" width="25" height="25" smooth="true" smoothingQuality="high"
+							 source="@Embed('com/ylsoft/assets/images/Key.png')"/>
+					<mx:LinkButton id="update_pwd_btn" right="8" label="修改密码" click="update_pwd()"
+								   verticalCenter="-3"/>
+					</s:Group>
+						
+					<s:Group x="840" width="101" height="100%">
+					<s:Image x="13" y="9" width="25" height="25" smooth="true" smoothingQuality="high"
+							 source="@Embed('com/ylsoft/assets/images/refresh.png')"/>
+					<mx:LinkButton x="39" y="8" label="刷 新" click="reload(event)"/>
+					</s:Group>
+						
+					<s:Group x="931" width="97" height="100%">
+					<s:Image x="14" y="9" width="25" height="25" smooth="true" smoothingQuality="high"
+							 source="@Embed('com/ylsoft/assets/images/return.png')"/>
+					<mx:LinkButton id="form_return" x="37" y="8" width="52" label="返回"/>
+					</s:Group>	
+						
+					<s:Group x="1020" width="106" height="100%">
+					<s:Image x="4" y="9" width="25" height="25" scaleMode="letterbox" smooth="true"
+							 smoothingQuality="high"
+							 source="@Embed('com/ylsoft/assets/images/logout.png')"/>
+					<mx:LinkButton x="28" y="8" label="退 出" click="logout(event)"/>
+					</s:Group>	
+						
+					</s:HGroup>
+				</s:BorderContainer>
+				<s:BorderContainer id="main_right" width="100%" height="100%"
+								   backgroundColor="#F5F5F5" borderVisible="false">
+					<s:layout>
+						<s:BasicLayout/>
+					</s:layout>
+				</s:BorderContainer>
+			</s:VGroup>
+		</s:HGroup>
+	</s:BorderContainer>
+</s:Application>

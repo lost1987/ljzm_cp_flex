@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="100%" height="100%" backgroundColor="#DCDCDC" color="#062C41"
+		  creationComplete="init()">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.AsCookie;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.Permission;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.XMLListCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.ListEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			private var xml:XMLList ;
+			
+			[Embed(source="com/ylsoft/assets/images/tree_item.png")]
+			[Bindable]
+			private var itemICON : Class;
+			private var cookie:AsCookie;
+			private var _time:Date;     //日期
+			private var timer:Timer;    //计数器
+			private var permission:Number;
+			private var child_permissions:Object;
+			private var amf:Amf;
+			
+			private function init():void{
+				cookie = AsCookie.getInstance();
+				this.username.text = AppConfig.admin.flagname;
+				
+				//加载icon
+				this.icon_user.source = AppConfig.MATERIAL+'user.png';
+				this.icon_clock.source = AppConfig.MATERIAL+'clock.png';
+				
+				//加载时间监听
+				this.showCurDate();  
+				timer.addEventListener(TimerEvent.TIMER,timeHandler);
+				timer.start();  
+				
+				
+				//获取权限设置导航
+				this.permission = AppConfig.admin.permission;
+				this.child_permissions = AppConfig.admin.child_permissions;
+				var req : URLRequest = new URLRequest('com/ylsoft/module/navTree.xml');
+				var load : URLLoader = new URLLoader();
+				load.addEventListener(Event.COMPLETE,aliasXML);
+				load.load(req);
+				
+			}
+			
+			
+			private function aliasXML(evt:Event):void{
+				xml = new XMLList(evt.target.data);
+				
+				var permissions:ArrayCollection = new ArrayCollection();
+				var i:Number = 0;
+				for each(var item:XML in xml.FOLDER){
+					 var object:Object = new Object;
+					 if(item.hasOwnProperty('@type') && item.hasOwnProperty('@id')){
+						 object.name = item.@name;
+						 object.id = item.@id;
+						 object.permission = item.@permission;
+						 
+						 //查询子节点
+						 var children : XMLList = new XMLList(item.children());
+						 var object_children : ArrayCollection = new ArrayCollection();
+						 for(var n:Number = children.length()-1; n >= 0; n--){
+							 var child:XML = children[n];
+							 var obj : Object = new Object;
+							 obj.name = child.@name;
+							 obj.permission = child.@permission;
+							 obj.parentPermission = item.@permission;
+							 object_children.addItem(obj);
+							
+							 //判断子节点权限
+							 if(!Permission.hasPermission(this.child_permissions[item.@id],child.@permission) || child.@visiable == false){
+							 	delete children[child.childIndex()];
+							 }
+						 }
+						 
+						 object.children = object_children;
+						 permissions.addItem(object);
+						 
+						 //执行模块权限判断
+						 if(!Permission.hasPermission(this.permission,item.@permission) || item.@visiable == false ){
+							 delete xml['FOLDER'][i];
+						 }else{
+							 i++;
+						 }
+					 }
+				}
+				
+				AppConfig.PERMISSIONS = permissions;
+				this.navTree.labelField = '@name';
+				this.navTree.showRoot = false;
+				this.navTree.useHandCursor = true;
+				this.navTree.dataProvider = xml;
+				
+				this.navTree.addEventListener(ListEvent.ITEM_CLICK,itemClick);
+			}
+			
+			private function itemClick(evt:ListEvent):void{
+				var item:Object = Tree(evt.target).selectedItem;
+				if(this.navTree.dataDescriptor.isBranch(item)){//如果是非底层节点
+					this.navTree.expandItem(item, !this.navTree.isItemOpen(item), true);
+				}else{
+					if(this.navTree.selectedItem.hasOwnProperty("@module")){
+						if(this.navTree.selectedItem.@module != ''){
+							FlexGlobals.topLevelApplication.main_right.removeAllElements();
+							ModuleGlobal.Modulefactory_main = new ModuleFactory();
+							ModuleGlobal.Modulefactory_main.setProgress(UIProgressBar.getInstance());
+							ModuleGlobal.Modulefactory_main.loadModule(this.navTree.selectedItem.@module,FlexGlobals.topLevelApplication.main_right);
+							ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+							//设置module_key 用于生成excel时的标识
+							AppConfig.module_key = (this.navTree.selectedItem.@module).toString().split('/')[1];
+							AppConfig.excel_name = this.navTree.selectedItem.@name;
+							FlexGlobals.topLevelApplication.btn_excel_export.enabled = false;
+							FlexGlobals.topLevelApplication.btn_component_image_export.enabled = false;
+						}
+					}
+				}
+			}
+			
+			//动态时间
+			public function showCurDate():void
+			{
+				_time = new Date();
+				var monStr:String;
+				var dateStr:String;
+				var hoursStr:String;
+				var minutesStr:String;
+				var secondsStr:String;
+				var week:String;
+				
+				var w:Number=_time.day;
+				var seconds:Number = _time.getSeconds();  //秒
+				var minutes:Number = _time.getMinutes();  //分
+				var hours:Number = _time.getHours();      //时
+				var day:Number = _time.getDay();          //星期
+				var date:Number = _time.getDate();        //日
+				var month:Number = _time.getMonth()+1;     //月
+				var year:Number = _time.getFullYear();    //年          
+				timer = new Timer(1000);
+				
+				if(w==0){
+					week="星期天";
+				}
+				if(w==1){
+					week="星期一";
+				}
+				if(w==2){
+					week="星期二";
+				}
+				if(w==3){
+					week="星期三";
+				}
+				if(w==4){
+					week="星期四";
+				}
+				if(w==5){
+					week="星期五";
+				}
+				if(w==6){
+					week="星期六";
+				}
+				
+				
+				if (month<10) 
+				{
+					monStr = "0"+String(month);
+				}
+				else
+				{
+					monStr = String(month);
+				} 
+				
+				if (date<10)
+				{
+					dateStr = "0"+String(date);
+				}   
+				else
+				{
+					dateStr = String(date);
+				}  
+				
+				if (hours<10)
+				{
+					hoursStr = "0"+String(hours);
+				}            
+				else
+				{
+					hoursStr = String(hours);
+				}
+				
+				if (minutes<10)
+				{
+					minutesStr = "0"+String(minutes);
+				}
+				else
+				{
+					minutesStr = String(minutes);
+				}
+				
+				if (seconds<10)
+				{
+					secondsStr = "0"+String(seconds);
+				}
+				else
+				{
+					secondsStr = String(seconds);
+				}
+				year_now.text = year+"年"+monStr+"月"+dateStr+"日";      //响应每秒更新一次
+				time_now.text = hoursStr+":"+minutesStr+":"+secondsStr+"  "+week;
+			}
+			
+			public function timeHandler(evt:TimerEvent):void
+			{
+				this.showCurDate();
+			}  
+		]]>
+	</fx:Script>
+	<!--另一种方式
+	[Embed(source=)]
+	[Bindable]
+	private var folderOpenICON:Class;
+	
+	[Embed(source=)]
+	[Bindable]
+	private var folderCloseICON:Class;
+	
+	/*private function iconReplace(obj:Object):*{//替换树节点图标
+	var xml:XML = XML(obj);
+	if(!xml.hasOwnProperty('@type') && xml.@type != 'folder')
+	return this.itemICON;
+	}*/
+	<mx:Tree id="navTree" left="0" bottom="-128" width="214" height="518" borderVisible="false"
+			 dropShadowVisible="true" iconFunction="iconReplace" openDuration="300" folderOpenIcon="{folderOpenICON}" folderClosedIcon="{folderCloseICON}"
+			 selectionDuration="300"></mx:Tree>
+	-->
+	<s:VGroup width="100%" height="100%">
+	<s:BorderContainer width="100%" height="20%" dropShadowVisible="true" fontSize="14"
+					   fontWeight="bold">
+		<s:Label id="username" x="58" y="23"/>
+		<s:Image id="icon_user" x="20" y="22" width="24" height="24" smooth="true" smoothingQuality="high" />
+		<s:Image id="icon_clock" x="20" y="58" smooth="true" width="24" height="24" smoothingQuality="high" />
+		<s:Label id="year_now" x="58" y="60"/>
+		<s:Label id="time_now" x="58" y="89"/>
+	</s:BorderContainer>
+	<mx:Tree id="navTree" left="0" bottom="0" width="100%" height="80%" borderVisible="true" buttonMode="true" 
+			 defaultLeafIcon="{itemICON}" dropShadowVisible="true" openDuration="300"
+			 selectionDuration="300"></mx:Tree>
+		
+	</s:VGroup>
+</s:Module>

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+		 xmlns:component="com.ylsoft.component.*"
+		 width="100%" height="100%">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.event.AppEvent;
+			import com.ylsoft.module.data.synthesis_list;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.core.FlexGlobals;
+			import mx.events.CalendarLayoutChangeEvent;
+			import mx.events.CloseEvent;
+			import mx.events.DataGridEvent;
+			import mx.events.ListEvent;
+			import mx.managers.PopUpManager;
+			import mx.utils.ObjectUtil;
+			
+			private var _amf:Amf;
+			private var _allServers:ArrayCollection = new ArrayCollection;//预加载的所有servers 用来对比的对象
+			private var _selectedServer:Object = new Object;//当前被选中的server
+			private var _buinesser_selected:Object = new Object;//当前被选中的单个运营商
+			
+			private  function init():void{
+				_amf = new Amf();
+				this.lock();
+				
+				var column_buissnesser : DataGridColumn = new DataGridColumn();
+				column_buissnesser.dataField = 'name';
+				column_buissnesser.headerText = '运营商';
+				cd_buissnesser.columns = cd_buissnesser.columns.concat(new Array(column_buissnesser));
+				
+				var column_server : DataGridColumn = new DataGridColumn();
+				column_server.dataField = 'name';
+				column_server.headerText = '服务器';
+				cd_server.columns = cd_server.columns.concat(new Array(column_server));
+				
+				var column_server1 : DataGridColumn = new DataGridColumn();
+				column_server1.dataField = 'status';
+				column_server1.headerText = '开启';
+				cd_server.columns = cd_server.columns.concat(new Array(column_server1));
+				
+				if(AppConfig.buissnesser!=null){
+					this.cd_buissnesser.dataProvider = AppConfig.buissnesser;
+					
+					_amf.setFaultMessage('无法获取服务器列表');
+					_amf.registerCallBack(setAllServers);
+					_amf.startService('serverService','getServersByBids',AppConfig.buissnesser.toArray());
+				}
+				
+				this.parent.addEventListener(KeyboardEvent.KEY_UP,cancelHandler);
+			}
+			
+			protected function titlewindow_closeHandler(event:CloseEvent):void
+			{
+				// TODO Auto-generated method stub
+				this.parent.removeEventListener(KeyboardEvent.KEY_UP,cancelHandler);
+				PopUpManager.removePopUp(this);
+			}
+			
+			private function setAllServers(evt:AppEvent):void{
+				this._allServers = new ArrayCollection(_amf.getResult() as Array);
+				this.unlock();
+				this.cd_buissnesser.addEventListener(ListEvent.ITEM_CLICK,setServersByBuissnesser);
+				this.cd_server.addEventListener(ListEvent.ITEM_CLICK,confirmBtnEnabled);
+			} 
+			
+			private function setServersByBuissnesser(evt:ListEvent):void{
+				_buinesser_selected = this.cd_buissnesser.selectedItem;
+				var temp:ArrayCollection = new ArrayCollection;
+				for each(var obj:Object in _allServers){
+					if(obj.bid == this._buinesser_selected.id){
+						temp.addItem(obj);
+					}
+				}
+				this.cd_server.dataProvider = temp;
+				this.btn_confirm.enabled = false;
+			}
+			
+			private function confirmBtnEnabled(evt:ListEvent):void{
+				this.btn_confirm.enabled = true;
+			}
+			
+			private function parentInitData():void{
+				this._selectedServer = this.cd_server.selectedItem;
+				FlexGlobals.topLevelApplication.main_right.getElementAt(0).server = this._selectedServer;
+				FlexGlobals.topLevelApplication.main_right.getElementAt(0).dispatchEvent(new AppEvent(AppEvent.BUISSNESSER_CHOOSE_COMPLETE));
+				tw.dispatchEvent(new CloseEvent(CloseEvent.CLOSE));
+			}
+			
+			private function lock():void{
+				this.cd_buissnesser.enabled = false;
+				this.cd_server.enabled = false;
+			}
+			
+			private function unlock():void{
+				this.cd_buissnesser.enabled = true;
+				this.cd_server.enabled = true;
+			}
+			
+			private function cancelHandler(evt:KeyboardEvent):void{
+				if(evt.keyCode == 27){
+					this.parent.removeEventListener(KeyboardEvent.KEY_UP,cancelHandler);
+					PopUpManager.removePopUp(this);
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<s:TitleWindow width="100%" height="100%" id="tw" close="titlewindow_closeHandler(event)" title="选择运营商和服务器" >
+		<s:VGroup x="0" y="0" width="100%" height="100%">
+			<s:Group width="100%" height="90%">
+				<s:HGroup x="0" y="0" width="100%" height="100%">
+					<mx:DataGrid id="cd_buissnesser" width="50%" height="100%" borderVisible="false"
+								 dropShadowVisible="true">
+					</mx:DataGrid>
+					<mx:DataGrid id="cd_server" width="50%" height="100%" borderVisible="false"
+								 dropShadowVisible="true">
+					</mx:DataGrid>
+				</s:HGroup>
+			</s:Group>
+			<s:Group width="100%" height="10%">
+				<s:Button id="btn_confirm" right="10" enabled="false" label="确定" verticalCenter="0" click="parentInitData()"/>
+			</s:Group>
+		</s:VGroup>
+	</s:TitleWindow>
+</s:Group>

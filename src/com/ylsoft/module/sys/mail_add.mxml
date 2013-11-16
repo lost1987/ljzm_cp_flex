@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:component="com.ylsoft.component.*"
+		  width="100%" height="100%" creationComplete="init()">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.SocketListener;
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.common.XWindow;
+			import com.ylsoft.component.BuissnesserChooserMuti;
+			import com.ylsoft.component.special.ItemList;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.managers.PopUpManager;
+			
+			import ronco.base.NetCore31;
+			
+			public var servers:ArrayCollection = new ArrayCollection;
+			private var listModule:String = 'sys/mail_list';
+			
+			/*****表单对象****/
+			private var formObj:Object;
+			
+			private var amf:Amf;
+			
+			private var fontlimitcount:int = 150;
+			
+			private var playerids:Array;
+			
+			private var online:Boolean=false;
+			
+			//两个list组件数据源
+			private var tempDataList:ArrayCollection;
+			private var playerDataList:ArrayCollection;
+			
+			
+			private function init():void{
+				this.typeServerEnabled();
+				
+				//监听运营商服务器选择事件
+				this.addEventListener(AppEvent.BUISSNESSER_CHOOSE_COMPLETE,buissnesserChooserComplete);
+				
+				this.sbtn.addEventListener(MouseEvent.CLICK,searchPlayer);
+				this.cbtn.addEventListener(MouseEvent.CLICK,clearSearch);
+				
+				//给邮件写数据限制
+				this.context.addEventListener(KeyboardEvent.KEY_UP,fontslimit);
+				
+				//设置两个list的labelfield
+				this.list_temp.labelField="name";
+				this.list_player.labelField="name";
+			}
+			
+			private function typeEnabled(evt:MouseEvent):void{
+				var radio:RadioButton = evt.target as RadioButton;
+				if(radio.id == 'rd_player'){
+					this.typePlayerEnabled();
+				}else if(radio.id == 'rd_online_player'){
+					this.typePlayerOnlineEnabled();
+				}else{
+					this.typeServerEnabled();
+				}
+			}
+			
+			private function typeServerEnabled():void{
+				this.rd_server.selected = true;
+				this.rd_player.selected = false;
+				this.rd_online_player.selected = false;
+				this.fi_search.enabled = false;
+				this.list_player.dataProvider = null;
+				this.formitem_list_player.enabled = false;
+				this.list_temp.dataProvider = null;
+				this.formitem_list_temp.enabled = false;
+				this.online = false;
+			}
+			
+			private function typePlayerOnlineEnabled():void{
+				this.rd_server.selected = false;
+				this.rd_player.selected = false;
+				this.rd_online_player.selected = true;
+				this.fi_search.enabled = true;
+				this.formitem_list_player.enabled = true;
+				this.formitem_list_temp.enabled = true;
+				this.online = true;
+			}
+			
+			private function typePlayerEnabled():void{
+				this.rd_server.selected = false;
+				this.rd_player.selected = true;
+				this.rd_online_player.selected = false;
+				this.fi_search.enabled = true;
+				this.formitem_list_player.enabled = true;
+				this.formitem_list_temp.enabled = true;
+				this.online=false;
+			}
+			
+			private function buissnesserChooser():void{
+				var bc : BuissnesserChooserMuti = new BuissnesserChooserMuti();
+				bc.width = 800;
+				bc.height = 400;
+				XWindow.getInstance().addWindow(bc,this).show();
+			}
+			
+			private function buissnesserChooserComplete(evt:AppEvent):void{
+				//初始化玩家列表
+			}
+			
+			private function formValidate():void{
+				var title:String = this.title.text;
+				var context:String = this.context.text;
+				if(Toolkit.blankClear(title)!='' && Toolkit.blankClear(context)!='' && this.servers.length > 0 && context.length <= this.fontlimitcount){
+					this.save_btn.enabled = true;
+					return;
+				}
+				this.save_btn.enabled = false;
+			}
+			
+			private function setTempList(evt:AppEvent):void{
+				this.tempDataList = new ArrayCollection(amf.getResult() as Array);
+				amf = null;
+				this.list_temp.dataProvider = tempDataList;
+			}
+			
+			private function searchPlayer(evt:MouseEvent):void{
+				var searchText : String = this.player_or_id.text;
+				if(searchText.replace(/\s+/g,'')!=''){
+					var condition:Object = new Object;
+					condition.playername_or_id = searchText;
+					condition.online = online;
+					
+					amf = new Amf;
+					amf.setFaultMessage("无法读取玩家列表");
+					amf.registerCallBack(setTempList);
+					amf.startService("playerService","playerSearch",servers.source,condition);
+				}
+			}
+			
+			private function clearSearch(evt:MouseEvent):void{
+				this.player_or_id.text = null;
+			}
+			
+			private function itemsList():void{
+				if(this.servers.length == 0){
+					Alert.show('请选择服务器');return;
+				}
+				amf = new Amf;
+				amf.setFaultMessage('无法读取物品列表');
+				amf.registerCallBack(itemslistHandler);
+				amf.startService('itemService','lists',this.servers.getItemAt(0));
+			}
+			
+			private function itemslistHandler(evt:AppEvent):void{
+				var items:ArrayCollection = new ArrayCollection(amf.getResult() as Array);
+				var itemlist : ItemList = new ItemList();
+				itemlist.width = 800;
+				itemlist.height = 400;
+				XWindow.getInstance().addWindow(itemlist,this).show();
+				itemlist.init(items);
+			}
+			
+			private function checkSaveBtnEnabled():void{
+				this.formValidate();
+			}
+			
+			private function fontslimit(evt:KeyboardEvent):void{
+				var context_length:int = this.context.text.length;
+				this.fontcount.text = (fontlimitcount-context_length).toString();
+				this.formValidate();
+			}
+			
+			private function save():void{
+				formObj = new Object();
+				if(rd_player.selected || rd_online_player.selected){
+					formObj.type  = 2;//玩家
+				}else{
+					formObj.type  = 1;//全服
+				}
+				amf = new Amf;
+				amf.setFaultMessage('无法连接服务器');
+				amf.registerCallBack(saveComplete);
+				
+				switch(formObj.type){
+					case 1: 
+							formObj.servers = this.servers.source;
+							formObj.title = this.title.text;
+							formObj.context = this.context.text;
+							formObj.item_id = this.item_id.text;
+							formObj.item_num = this.item_num.text;
+							formObj.admin = AppConfig.admin;
+							amf.startService('mailService','sendMailsWithServers',formObj);
+							break;
+					case 2:
+							formObj.players = this.list_player.dataProvider.toArray();
+							formObj.title = this.title.text;
+							formObj.context = this.context.text;
+							formObj.item_id = this.item_id.text;
+							formObj.item_num = this.item_num.text;
+							formObj.servers = this.servers.source;
+							formObj.admin = AppConfig.admin;
+							amf.startService('mailService','sendMailsWithPlayers',formObj);
+							break;
+				}
+				
+			}
+			
+			private function saveComplete(evt:AppEvent):void{
+				var result:Number = amf.getResult() as Number;
+				if(result == 0){
+					Alert.show('操作成功');
+				}
+				else if(result < 0){
+					Alert.show('操作失败,服务端内部错误');
+					return;
+				}else{
+					Alert.show('操作失败,附件ID错误');
+					return;
+				}
+				
+				FlexGlobals.topLevelApplication.main_right.removeAllElements();
+				ModuleGlobal.Modulefactory_main = new ModuleFactory();
+				ModuleGlobal.Modulefactory_main.setProgress(UIProgressBar.getInstance());
+				ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+				ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+				AppConfig.formoperation = null;	
+				AppConfig.formid = 0;
+			}
+		]]>
+	</fx:Script>
+	<s:Panel x="0" y="0" width="100%" height="100%" title="发送邮件">
+		<s:Form x="0" y="0" width="100%" height="100%">
+			<s:layout>
+				<s:BasicLayout/>
+			</s:layout>
+			<s:FormItem x="324" y="0" width="367" height="43" label="角色ID或角色名" id="fi_search">
+				<s:layout>
+					<s:HorizontalLayout/>
+				</s:layout>
+				<s:TextInput id="player_or_id" />
+				<mx:LinkButton label="搜索" id="sbtn" color="#036BBC"/>
+				<mx:LinkButton id="cbtn" label="清空" color="#FF1E00"/>
+			</s:FormItem>
+			<s:FormItem x="0" y="57" height="39" label="服务器">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<mx:LinkButton label="浏览" color="#036BBC" fontStyle="italic" fontWeight="bold"
+						click="buissnesserChooser()"	   textDecoration="underline"/>
+				<s:Label text="已选择"/>
+				<s:Label color="#FF0D01" text="0" id="servercount"/>
+				<s:Label text="台服务器"/>
+				<s:Label color="#FD0000" text="*"/>
+			</s:FormItem>
+			<s:FormItem x="0" y="0" label="邮件类型">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:RadioButton id="rd_player" x="0" y="215" label="所有玩家" buttonMode="true" click="typeEnabled(event)"/>
+				<s:RadioButton id="rd_online_player" label="在线玩家" buttonMode="true" click="typeEnabled(event)"/>
+				<s:RadioButton id="rd_server" label="全服" buttonMode="true" click="typeEnabled(event)"/>
+				<s:Label color="#FF0000" text="*"/>
+			</s:FormItem>
+			<s:FormItem x="0" y="265" width="333" label="标题">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:TextInput id="title" x="10" y="238" width="228" prompt="输入邮件标题" keyUp="checkSaveBtnEnabled()" focusOut="checkSaveBtnEnabled()"/>
+				<s:Label color="#FF0000" text="*"/>
+			</s:FormItem>
+			<s:FormItem x="0" y="315" width="579" label="内容">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="top"/>
+				</s:layout>
+				<s:TextArea id="context" x="10" y="289" width="487" prompt="输入邮件内容" keyUp="checkSaveBtnEnabled()" focusOut="checkSaveBtnEnabled()"/>
+				<s:Label color="#FF0000" text="*"/>
+			</s:FormItem>
+			<s:FormItem x="0" y="540" label="附件">
+				<s:helpContent>
+					<s:VGroup>
+						<s:Label text="仅限数字"></s:Label>
+					</s:VGroup>
+				</s:helpContent>
+				<s:TextInput id="item_id" x="10" y="472" restrict="0-9"/>
+			</s:FormItem>
+			<s:FormItem x="261" y="540" width="143" label="数量">
+				<s:helpContent>
+					<s:VGroup>
+						<s:Label text="仅限数字"></s:Label>
+					</s:VGroup>
+				</s:helpContent>
+				<s:TextInput id="item_num" x="233" y="492" width="31" restrict="0-9"/>
+			</s:FormItem>
+			<s:FormItem x="414" y="540">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<mx:LinkButton x="320" y="472" label="查看物品ID" fontStyle="italic" fontWeight="bold"
+							   textDecoration="underline" click="itemsList()"/>
+				<s:Button label="发     送" buttonMode="true" enabled="false" id="save_btn" click="save()"/>
+			</s:FormItem>
+			<s:FormItem x="29" y="490" label="还可以输入">
+				<s:layout>
+					<s:HorizontalLayout/>
+				</s:layout>
+				<s:Label id="fontcount" color="#ED500A" text="150"/>
+				<s:Label text="字"/>
+			</s:FormItem>
+			<s:FormItem id="formitem_list_player" x="731" y="0" width="297" height="582" label="玩家">
+				<s:List id="list_player" dragEnabled="true" dropEnabled="true" dragMoveEnabled="true" x="645" y="10" width="241" height="562" enabled="true"></s:List>
+			</s:FormItem>
+			<s:FormItem id="formitem_list_temp" x="324" y="51" width="362" height="229" label="搜索结果">
+				<s:List id="list_temp" dragEnabled="true" dropEnabled="true" dragMoveEnabled="true" allowMultipleSelection="true" x="431" y="44" width="282" height="207" enabled="true"></s:List>
+			</s:FormItem>
+			<s:FormItem x="686" y="154" width="68" label="→">
+				<s:Label x="694" y="177" text="拖入"/>
+			</s:FormItem>
+		</s:Form>
+	</s:Panel>
+</s:Module>

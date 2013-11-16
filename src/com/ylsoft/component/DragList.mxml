@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.events.DragEvent;
+			
+			public var dataProvider_left : ArrayCollection;
+			public var dataProvider_right: ArrayCollection;
+			public var LabelField_left:String;
+			public var LabelField_right:String;
+			
+			public function init():void{
+				this.list_left.dataProvider = dataProvider_left;
+				this.list_left.labelField = LabelField_left;
+				this.list_right.dataProvider = dataProvider_right;
+				this.list_right.labelField = LabelField_right;
+			}
+			
+			protected function list_left_dragEnterHandler(event:DragEvent):void
+			{
+				// TODO Auto-generated method stub
+				event.target.dropEnabled = ( event.target != event.dragInitiator );
+			}
+			
+			protected function list_right_dragEnterHandler(event:DragEvent):void
+			{
+				// TODO Auto-generated method stub
+				event.target.dropEnabled = ( event.target != event.dragInitiator );
+			}
+			
+		]]>
+	</fx:Script>
+	<s:List id="list_left" x="0" y="0" width="50%" height="100%" contentBackgroundColor="#D7D7D7" allowMultipleSelection="true"
+			dragEnabled="false" dragEnter="list_left_dragEnterHandler(event)" dragMoveEnabled="true"></s:List>
+	<s:List id="list_right" y="0" right="0" width="50%" height="100%"
+			contentBackgroundColor="#516884" dragEnabled="false" allowMultipleSelection="true"
+			dragEnter="list_right_dragEnterHandler(event)" dragMoveEnabled="true"></s:List>
+</s:Group>
