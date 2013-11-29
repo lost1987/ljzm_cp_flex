@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<config>
+	<host>127.0.0.1</host>
+	<basepath>ljzm_cp</basepath>
+	<gateway>gateway.php</gateway>
+	<excelgateway>excel_gateway.php</excelgateway>
+	<infogateway>flexhtml/phpinfo.php</infogateway>
+	<infopwd>bdijltvwxzBCDEFGIJLMOQTVWXZ12357</infopwd>
+</config>

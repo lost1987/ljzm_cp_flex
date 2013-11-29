@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="600">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处
+		  日志类型选择 :
+		     父元素需要有2个公有变量
+			public var childType:String;
+			public var childTypeName:String;
+		
+		  调用:
+			 当此组件加入显示列表后 需调用
+			   setLogType(_type);
+		       setParentElement(this,this.logSelectComplete);
+		       init();
+		    这3个方法
+		-->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+			
+			import spark.components.FormItem;
+			import spark.components.RadioButton;
+			   private var amf:Amf;
+			   private var logtypes:ArrayCollection;
+			   private var type:int;
+			   private var parentElement:Object;
+			   private var logSelectCompleteCallBack:Function=null;
+			
+			   public function setLogType(type:int):void{
+				   	this.type = type;
+			   }
+			
+			  /**
+			  * @param parentElement  父元素本身
+			  * @param logSelectCompleteCallBack 日志选择完成事件回调函数引用
+			  * */
+			  public function setParentElement(parentElement:Object,logSelectCompleteCallBack:Function=null):void{
+				  this.parentElement = parentElement;
+				  if(logSelectCompleteCallBack != null){
+				 	 (this.parentElement as EventDispatcher).addEventListener(AppEvent.LOG_TYPE_SELECT_COMPLETE,logSelectCompleteCallBack);
+					 this.logSelectCompleteCallBack = logSelectCompleteCallBack;
+				  }
+			  }
+			
+			   public function init():void{
+				   amf = new Amf;
+				   amf.setFaultMessage('无法读取子分类');
+				   amf.registerCallBack(initChildTypes);
+				   amf.startService('logEventsService','listsByType',type);
+			   }
+			
+			   private function initChildTypes(evt : AppEvent):void{
+				   logtypes = new ArrayCollection(amf.getResult() as Array);
+				   
+				  list.dataProvider = logtypes;
+				  list.labelField = "name";
+				  
+			   }
+			
+			private function seltype():void{
+				var _type:Object = this.list.selectedItem;
+				this.parentElement.childType = _type.id;
+				this.parentElement.childTypeName = _type.name;
+				(this.parentElement as EventDispatcher).dispatchEvent(new AppEvent(AppEvent.LOG_TYPE_SELECT_COMPLETE));
+				if(this.logSelectCompleteCallBack != null)
+					(this.parentElement as EventDispatcher).removeEventListener(AppEvent.LOG_TYPE_SELECT_COMPLETE,logSelectCompleteCallBack);
+				this.tw.dispatchEvent(new CloseEvent(CloseEvent.CLOSE));
+			}
+			
+			protected function titlewindow1_closeHandler(event:CloseEvent):void
+			{
+				// TODO Auto-generated method stub
+				PopUpManager.removePopUp(this);
+			}
+		]]>
+	</fx:Script>
+	<s:TitleWindow width="100%" height="100%" id="tw"  close="titlewindow1_closeHandler(event)" title="日志分类(双击列表项即可选择)" >
+		<mx:List id="list" x="0" y="0" width="100%" height="100%" borderVisible="false"
+				 doubleClickEnabled="true" dropShadowVisible="true" itemDoubleClick="seltype()"></mx:List>
+	</s:TitleWindow>
+</s:Group>

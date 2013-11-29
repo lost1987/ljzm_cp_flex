@@ -77,6 +77,8 @@ package com.ylsoft.common
 		 * @return 返回包含2端日期的天数日期数组
 		 **/ 
 		public static function datediff(startdate:String,enddate:String,formatString:String='YYYY/MM/DD'):Array{
+			  startdate = startdate.replace(/-/g,'/');
+			  enddate = enddate.replace(/-/g,'/');
 			  if((typeof startdate).toLowerCase() == 'string')
 				var  _startdate:Number =Date.parse(startdate);
 			  else

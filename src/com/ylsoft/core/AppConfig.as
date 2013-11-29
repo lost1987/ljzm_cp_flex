@@ -5,16 +5,16 @@ package com.ylsoft.core
 	public class AppConfig
 	{
 		
-		public static const HOST:String = 'http://123.150.106.131';
-    	public static const AMFURL : String = HOST+'/game_manager/gateway.php';
-		public static const EXCEL_GATEWAY : String = HOST+'/game_manager/excel_gateway.php';
-		public static const INFO_URL : String = HOST+'/game_manager/flexhtml/phpinfo.php';
+//		public static var HOST:String = 'http://123.150.106.131';
+//    	public static var AMFURL : String = HOST+'/game_manager/gateway.php';
+//		public static var EXCEL_GATEWAY : String = HOST+'/game_manager/excel_gateway.php';
+//		public static var INFO_URL : String = HOST+'/game_manager/flexhtml/phpinfo.php';
 		
-//		public static const HOST:String = 'http://127.0.0.1';
-//		public static const AMFURL : String = HOST+'/ljzm_cp/gateway.php';
-//		public static const EXCEL_GATEWAY : String = HOST+'/ljzm_cp/excel_gateway.php';
-//		public static const INFO_URL : String = HOST+'/ljzm_cp/flexhtml/phpinfo.php';
-		public static const INFO_PWD:String = 'bdijltvwxzBCDEFGIJLMOQTVWXZ12357';
+		public static var HOST:String = '';
+		public static var AMFURL : String = '';
+		public static var EXCEL_GATEWAY : String = '';
+		public static var INFO_URL : String = '';
+		public static var INFO_PWD:String = '';
 		
 		
 		public static const MATERIAL:String = 'com/ylsoft/assets/images/';

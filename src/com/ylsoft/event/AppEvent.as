@@ -29,6 +29,8 @@ package com.ylsoft.event
 		
 		public static const BUISSNESSER_CHOOSER_CUS_SINGLE_COMPLETE:String = 'buissnesser_chooser_cus_single_complete';
 		
+		public static const LOG_TYPE_SELECT_COMPLETE:String = 'log_type_select_complete';
+		
 		public function AppEvent(type:String, bubbles:Boolean=false, cancelable:Boolean=false)
 		{
 			super(type, bubbles, cancelable);

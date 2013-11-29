@@ -54,7 +54,7 @@
 				//获取权限设置导航
 				this.permission = AppConfig.admin.permission;
 				this.child_permissions = AppConfig.admin.child_permissions;
-				var req : URLRequest = new URLRequest('com/ylsoft/module/navTree.xml');
+				var req : URLRequest = new URLRequest('com/ylsoft/module/navTree.php');
 				var load : URLLoader = new URLLoader();
 				load.addEventListener(Event.COMPLETE,aliasXML);
 				load.load(req);

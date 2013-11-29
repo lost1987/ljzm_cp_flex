@@ -31,6 +31,17 @@
 			private var amf:Amf;
 			private var columsInited:Boolean = false;
 			private var df:DateFormatter;
+			private var example:Object = {
+						id:-1, 
+					    fromservernames:"test_s1,test_s2", 
+						toservername:"test_s1",
+						mergetime:"1970-00-00",
+						buissnesserchange:"b1->b2",
+						statname:"已拒绝",
+						applytime:"1970-00-00",
+						optime:"1970-00-00",
+						_enabled:false
+			}
 			
 			private function init():void{
 				df = new DateFormatter();
@@ -52,6 +63,9 @@
 				}
 				else if(sb.amf != null)
 					result = new ArrayCollection(sb.amf.getResult() as Array);
+				
+				var lastIndex:int = result.length==0 ? 0 : result.length-1;
+				result.addItemAt(example,lastIndex);
 				
 				dg.dataProvider = result;
 				amf = null;

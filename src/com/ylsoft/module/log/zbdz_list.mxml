@@ -19,6 +19,7 @@
 			import com.ylsoft.common.XWindow;
 			import com.ylsoft.component.BuissnesserChooserMuti;
 			import com.ylsoft.component.BuissnesserChooserSingle;
+			import com.ylsoft.component.special.Logtypes;
 			import com.ylsoft.component.special.PlayerDetail;
 			import com.ylsoft.core.Amf;
 			import com.ylsoft.core.AppConfig;
@@ -44,8 +45,9 @@
 			private var detail_amf:Amf;
 			public var server:Object;
 			private var _total:Object = new Object;
-			private var _amf_childtypes:Amf;
-			private var _childtypes:ArrayCollection;
+			private var _type:int ;//收益|消耗
+			public var childType:String;
+			public var childTypeName:String;
 			
 			private function init():void{
 				//禁用返回列表
@@ -61,11 +63,6 @@
 					{name:"损失",value:"1"}
 				]);
 				this.type.selectedIndex = 0;
-				
-				_amf_childtypes = new Amf;
-				_amf_childtypes.setFaultMessage('无法读取子分类');
-				_amf_childtypes.registerCallBack(initChildTypes);
-				_amf_childtypes.startService('logEventsService','lists');
 				
 				//给datagrid绑定双击事件
 				this.cd.dg.addEventListener(ListEvent.ITEM_DOUBLE_CLICK,showdetail);
@@ -167,8 +164,7 @@
 				condition.endtime = this.endtime.text;
 				condition.type = this.type.selectedItem.value;
 				
-				var childTypes:Object = this.child_types.selectedItem;
-				condition.child_type = childTypes!=null ? childTypes.id : '';
+				condition.child_type = childType==null ? null : childType;
 				condition.level_start = this.level_start.value == 0 ? '' : this.level_start.value;
 				condition.level_limit = this.level_limit.value == 0 ? '' : this.level_limit.value;
 				condition.vip_start = this.vip_start.value == -1 ? '' : this.vip_start.value;
@@ -208,46 +204,27 @@
 				}
 			}
 			
+			private function showlogtypes():void{
+				var logtypes:Logtypes = new Logtypes;
+				XWindow.getInstance().addWindow(logtypes,this).show();
+				logtypes.setLogType(_type);
+				logtypes.setParentElement(this,this.logSelectComplete);
+				logtypes.init();
+			}
+			
+			private function logSelectComplete(evt:AppEvent):void{
+				this.childTypeNameLabel.text = this.childTypeName;
+			}
+			
 			private function loadChildTypes():void{
-				var type:Object = this.type.selectedItem;
-				if(type != null){
-					var typenum : int = type.value;
-					if(typenum == -1){
-						this.child_types.dataProvider = null;
-						this.child_types.textInput.text = '';
-						this.child_types.enabled=false;
-					}else{
-						this.child_types.enabled = true;
-						this.child_types.dataProvider = this._childtypes;
-					}
-				}
-			}
-			
-			private function initChildTypes(evt:AppEvent):void{
-				_childtypes = new ArrayCollection(_amf_childtypes.getResult() as Array);
-				if(_childtypes!=null){
-					this.child_types.labelField='name';
-					this.child_types.dataProvider = _childtypes;
-					this.child_types.selectedIndex = -1;
-					this.child_types.textInput.setStyle('color',Color.green);
-					this.child_types.addEventListener(KeyboardEvent.KEY_UP,is_type_error);
-					this.child_types.addEventListener(Event.CHANGE,is_type_error);
-					this.type.addEventListener(Event.CHANGE,is_type_error);
-				}
-			}
-			
-			private function is_type_error(evt:Event):void{
-				for each(var obj : Object in this._childtypes){
-					if(obj.name == this.child_types.textInput.text || this.child_types.textInput.text==''){
-						this.child_types.errorString = "";
-						if(this.server != null)
-							this.search_btn.enabled = true;
-						break;
-					}else{
-						this.child_types.errorString="类型错误,请重新输入或选择";
-						this.search_btn.enabled = false;
-					}
-				}
+				this._type = int(this.type.selectedItem.value);
+				if(_type != -1)
+					this.logtype_btn.enabled = true;
+				else
+					this.logtype_btn.enabled = false;
+				this.childType = '';
+				this.childTypeName = '';
+				this.childTypeNameLabel.text = '';
 			}
 			
 			private function showdetail(evt:ListEvent):void{
@@ -304,11 +281,12 @@
 		<mx:NumericStepper id="level_start" x="458" y="1" maximum="200" minimum="0"/>
 		<mx:NumericStepper id="level_limit" x="563" y="1" maximum="99" minimum="0"/>
 		<s:Label x="534" y="8" text="~~"/>
-		<s:ComboBox id="child_types" x="426" y="32" width="202"/>
 		<s:Label x="648" y="7" text="VIP"/>
 		<mx:NumericStepper id="vip_start" x="676" y="1" maximum="12" minimum="-1" value="-1"/>
 		<mx:NumericStepper id="vip_limit" x="761" y="1" maximum="12" minimum="-1" value="-1" />
 		<s:Label x="738" y="6" text="~~"/>
+		<mx:Button id="logtype_btn" x="469" y="31" label="日志分类" click="showlogtypes()" enabled="false"/>
+		<s:Label id="childTypeNameLabel" x="549" y="36" width="75" color="#F71289" text="无"/>
 	</s:Panel>	
 	
 </s:Module>

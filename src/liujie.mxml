@@ -63,6 +63,8 @@
 				//隐藏界面 
 				main_group.visible = false;
 				
+				this.initService();
+				
 				ModuleGlobal.Modulefactory_login = new ModuleFactory();
 				ModuleGlobal.Modulefactory_login.setProgress(UIProgressBar.getInstance());
 				ModuleGlobal.Modulefactory_login.loadModule('login',this.main_container);
@@ -70,6 +72,26 @@
 				
 				//全局监听
 				this.initGlobalListeners();
+			}
+			
+			/**
+			 * 读取服务配置
+			 */ 
+			private function initService():void{
+				var req : URLRequest = new URLRequest('com/ylsoft/service.php');
+				var load : URLLoader = new URLLoader();
+				load.addEventListener(Event.COMPLETE,configService);
+				load.load(req);
+			}
+			
+			private function configService(evt:Event):void{
+				var xml:XML = new XML(evt.target.data);
+				//trace(xml.host);
+				AppConfig.HOST = 'http://'+xml.host;
+				AppConfig.AMFURL = AppConfig.HOST+'/'+xml.basepath+'/'+xml.gateway;
+				AppConfig.EXCEL_GATEWAY		=  AppConfig.HOST+'/'+xml.basepath+'/'+xml.excelgateway;
+				AppConfig.INFO_URL =  AppConfig.HOST+'/'+xml.basepath+'/'+xml.infogateway;
+				AppConfig.INFO_PWD = xml.infopwd;
 			}
 			
 			

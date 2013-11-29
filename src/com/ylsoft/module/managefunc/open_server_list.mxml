@@ -32,6 +32,18 @@
 			private var columsInited:Boolean = false;
 			private var df:DateFormatter;
 			
+			private var example:Object = {
+					id:-1, 
+					time:"1970-00-00",
+					buissnesser:"艺龙",
+					servername:"双线1服",
+					serverip:"http://gamename.xxx.com/s1",
+					statname:"已拒绝",
+					applytime:"1970-00-00",
+					optime:"1970-00-00",
+					_enabled:false
+			}
+			
 			private function init():void{
 				df = new DateFormatter();
 				df.formatString = "YYYY-MM-DD HH:NN:SS";
@@ -52,6 +64,9 @@
 				}
 				else if(sb.amf != null)
 					result = new ArrayCollection(sb.amf.getResult() as Array);
+				
+				var lastIndex:int = result.length==0 ? 0 : result.length-1;
+				result.addItemAt(example,lastIndex);
 				
 				dg.dataProvider = result;
 				amf = null;
