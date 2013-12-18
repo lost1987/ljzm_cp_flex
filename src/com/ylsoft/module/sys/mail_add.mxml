@@ -136,7 +136,7 @@
 			
 			private function searchPlayer(evt:MouseEvent):void{
 				var searchText : String = this.player_or_id.text;
-				if(searchText.replace(/\s+/g,'')!=''){
+				if(searchText.replace(/\s+/g,'')!=''  || (rd_online_player.selected && searchText.replace(/\s+/g,'')=='')){
 					var condition:Object = new Object;
 					condition.playername_or_id = searchText;
 					condition.online = online;

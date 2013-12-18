@@ -38,7 +38,7 @@ package com.ylsoft.core
 				this._remoteObject.addEventListener(AppEvent.AMF_GLOABAL_COMPLETE,callback);
 			else 
 				this._remoteObject.addEventListener(AppEvent.AMF_GLOABAL_COMPLETE,EventDelegate.createWithoutEvent(callback,params));
-			this._callback = callback;
+				this._callback = callback;
 		}
 		
 		

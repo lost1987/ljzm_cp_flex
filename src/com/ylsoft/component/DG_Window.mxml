@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.collections.ArrayList;
+			import mx.collections.IList;
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			
+			protected function titlewindow1_closeHandler(event:CloseEvent):void
+			{
+				// TODO Auto-generated method stub
+				PopUpManager.removePopUp(this);
+			}
+			
+			public function initColumns(Columns:Array):void{
+				this.dg.columns = new ArrayList(Columns);
+			}
+			
+			public function initData(data : ArrayCollection):void{
+				this.dg.dataProvider = data;
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:TitleWindow width="100%" height="100%" close="titlewindow1_closeHandler(event)" id="tw">
+		<s:DataGrid x="0" y="0" width="100%" height="95%" borderVisible="false" id="dg"
+					requestedRowCount="4">
+		</s:DataGrid>
+		<s:HGroup x="0" bottom="0" width="100%" height="5%">
+			<s:Spacer x="10" y="628" width="88%" height="10"/>
+			<s:Button x="0" y="0" label="确    定" buttonMode="true" id="btn_send"/>
+		</s:HGroup>
+	</s:TitleWindow>
+</s:Group>

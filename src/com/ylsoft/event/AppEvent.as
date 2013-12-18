@@ -15,6 +15,8 @@ package com.ylsoft.event
 		
 		public static const CHKDATAGRID_CHECKED_CHANGE :String = 'chkdatagrid_checked_change';
 		
+		public static const CHKDATAGRID_CHECKED_ALL_CLICK:String = 'chkdatagrid_checked_all_click';//checkbox datagrid 的顶部checkbox点击事件
+		
 		public static const EXCEL_EXPORT_READY : String = 'excel_export_ready';
 		
 		public static const COMPONENT_EXPORT_IMAGE_READY : String = 'component_export_image_ready';
@@ -25,9 +27,11 @@ package com.ylsoft.event
 		
 		public static const BUISSNESSER_CHOOSE_COMPLETE : String = 'buissnesser_choose_complete';
 		
-		public static const BUISSNESSER_CHOOSER_CUS_MUTI_COMPLETE:String = 'buissnesser_chooser_cus_muti_complete';
+		public static const BUISSNESSER_CHOOSER_CUS_MUTI_COMPLETE:String = 'buissnesser_chooser_cus_muti_complete';//这个组件事件,返回servers : ArrayConllection
 		
-		public static const BUISSNESSER_CHOOSER_CUS_SINGLE_COMPLETE:String = 'buissnesser_chooser_cus_single_complete';
+		public static const BUISSNESSER_CHOOSER_CUS_SINGLE_COMPLETE:String = 'buissnesser_chooser_cus_single_complete';//这个组件事件,返回serverid
+		
+		public static const BUISSNESSER_CHOOSER_ONLY_COMPLETE:String = 'buissnesser_chooser_only_complete';//这个组件事件,返回buissnesser对象
 		
 		public static const LOG_TYPE_SELECT_COMPLETE:String = 'log_type_select_complete';
 		

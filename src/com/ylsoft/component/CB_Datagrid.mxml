@@ -42,7 +42,12 @@
 					this.selecteditem = dataArray.getItemAt(dg.selectedIndex);
 				}else{
 					dataArray.getItemAt(dg.selectedIndex)._select = false;
-					this.selecteditem = dataArray.getItemAt(dg.selectedIndex);
+					for each(var item:Object in dataArray){
+						if(item._select){
+							this.selecteditem  = item;
+							break;
+						}
+					}
 				}
 				dg.dataProvider = dataArray;
 				checkSelectedItems();
@@ -66,6 +71,7 @@
 					}
 				}
 				dg.dataProvider = dataArray;
+				this.dg.dispatchEvent(new AppEvent(AppEvent.CHKDATAGRID_CHECKED_ALL_CLICK));
 			}
 			
 			/**
@@ -90,7 +96,7 @@
 				<mx:headerRenderer>
 					 <fx:Component>
 						 <mx:HBox horizontalAlign="center">
-							 <s:CheckBox id="chxBoxAll"   click="outerDocument.itemsControll(this)"
+							 <s:CheckBox id="chxBoxAll"   click="outerDocument.itemsControll(this)" doubleClickEnabled = "false"
 										 change="outerDocument.clickHandlerAll(this);"/>  
 						 </mx:HBox>
 					 </fx:Component>
@@ -98,7 +104,7 @@
 				<mx:itemRenderer>  
 					<fx:Component>  
 						<mx:HBox horizontalAlign="center">                           
-							<s:CheckBox id="chxBox" selected="{data._select}"   
+							<s:CheckBox id="chxBox" selected="{data._select}"    doubleClickEnabled = "false"
 										change="outerDocument.clickHanlder(this);"/>  
 						</mx:HBox>  
 					</fx:Component>  

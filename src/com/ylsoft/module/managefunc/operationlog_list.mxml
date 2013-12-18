@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:component="com.ylsoft.component.*"
+		  width="100%" height="100%" creationComplete="init()">
+	<!--系统操作日志-->
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.ColorLabel;
+			import com.ylsoft.common.DesSecurity;
+			import com.ylsoft.common.Message;
+			import com.ylsoft.common.Msg_ServerCode;
+			import com.ylsoft.common.Pagelimit;
+			import com.ylsoft.common.SocketListener;
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.common.XWindow;
+			import com.ylsoft.component.BuissnesserChooserMuti;
+			import com.ylsoft.component.BuissnesserChooserSingle;
+			import com.ylsoft.component.special.PlayerDetail;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.SocketService;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.ArrayList;
+			import mx.controls.Alert;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.core.FlexGlobals;
+			import mx.events.ListEvent;
+			import mx.formatters.DateFormatter;
+			import mx.managers.PopUpManager;
+			import mx.utils.ObjectUtil;
+			
+			import ronco.base.NetCore31;
+			
+			import spark.components.gridClasses.GridColumn;
+			private var amf:Amf;
+			private var _amf:Amf;
+			private var log_amf:Amf;
+			public var server:Object;
+			private var _total:Object = new Object;
+			private var _dateformat:DateFormatter = new DateFormatter();
+			
+			private function init():void{
+				//禁用返回列表
+				FlexGlobals.topLevelApplication.form_return.enabled=false;
+				initColumns();
+				_dateformat.formatString = 'YYYY-MM-DD';
+				
+				//初始化日志类型
+				log_amf = new Amf;
+				log_amf.registerCallBack(initLogTypes);
+				log_amf.startService('operationlogService','logTypes');
+				
+				//初始化状态栏
+				cb_state.dataProvider = new ArrayCollection([
+					{name:'全部',id:''},
+					{name:'执行中',id:-1},
+					{name:'已完成',id:1}
+				]);
+				cb_state.labelField = 'name';
+				
+				this.search_btn.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+			}
+			
+			private function checkServerChooser(evt:Event):void{
+				if(this.server == null || this.starttime.text == '' || this.endtime.text == '')
+					this.search_btn.enabled = false;
+				else{
+					var parttern : RegExp = /-|:/g;
+					var startdate:String = this.starttime.text.replace(parttern,'');
+					var enddate : String = this.endtime.text.replace(parttern,'');
+					if(int(startdate) > int(enddate)){
+						Alert.show('起始日期不能大于结束日期');
+						this.search_btn.enabled = false;return;
+					}
+					this.search_btn.enabled = true;
+				}
+			}
+			
+			public function initDataGrid(evt:AppEvent):void{
+				var result:ArrayCollection
+				if(amf != null){
+					result = new ArrayCollection(amf.getResult() as Array);
+				}
+				else if(sb.amf != null)
+					result = new ArrayCollection(sb.amf.getResult() as Array);
+				
+				dg.dataProvider = result;
+				initSubpage();
+				amf = null;
+			}
+			
+			private function initColumns():void{
+				var columns:Array = [];
+				var columns_properties:Array = [
+					{dataField:"id",headerText:"id",width:"50"},
+					{dataField:"admin",headerText:"管理员账号",width:"150"},
+					{dataField:"admin_flagname",headerText:"管理员名称",width:"150"},
+					{dataField:"logname",headerText:"日志类型",width:"150"},
+					{dataField:"statename",headerText:"状态",width:""},
+					{dataField:"donetime",headerText:"操作时间",width:"150"},
+					{dataField:"success_servernames",headerText:"收到消息的服务器",width:"300"},
+					{dataField:"failed_servernames",headerText:"未收到消息的服务器",width:"300"}
+				]
+				
+				for(var i:int = 0 ; i< columns_properties.length; i++){
+					var  column : GridColumn = new GridColumn;
+					column.dataField = columns_properties[i].dataField;
+					column.headerText = columns_properties[i].headerText;
+					if(columns_properties[i].width>1)column.width = columns_properties[i].width;
+					
+					//labelFunction
+				/*	if(column.dataField == 'sex'){
+						column.labelFunction = function(object:Object,grid:GridColumn):String{
+							if(object.sex == 0)return '/';
+							else if(object.sex==1) return '男';
+							else return '女';
+						}
+					}
+					
+					//itemRenderer
+					if(column.dataField == 'name' || column.dataField == 'loginname'){
+						var  factory:ClassFactory = new ClassFactory(SColorLabel);
+						factory.properties = {color:Color.purple};
+						column.itemRenderer = factory;
+					}
+					*/
+					columns.push(column);
+				}
+				
+				this.dg.columns = new ArrayList(columns);
+			}
+			
+			
+			private function initSubpage():void{
+				sb.service = 'OperationlogService';
+				sb.method = 'lists';
+				sb.methodTotal = 'num_rows';
+				sb.container = this;
+				sb.condition = getCondition();
+				sb.initTotal();				
+			}
+			
+			private function getCondition():Object{
+				var condition : Object = new Object();
+				condition.account_or_name = this.lb_account_or_name.text;
+				condition.state = this.cb_state.selectedItem == null ? '' : this.cb_state.selectedItem.id;
+				condition.starttime = this.starttime.text;
+				condition.endtime = this.endtime.text;
+				condition.logtype = this.cb_logtypes.selectedItem == null ? '' : this.cb_logtypes.selectedItem.type;
+				return condition;
+			}
+			
+			private function doSearch():void{
+				this.sb.is_total_exec = false;
+				amf = new Amf();
+				amf.setFaultMessage("通信失败");
+				amf.registerCallBack(initDataGrid);
+				amf.startService('OperationlogService','lists',new Pagelimit(0,AppConfig.PAGECOUNT),getCondition());
+			}
+			
+			private function initLogTypes(evt:AppEvent):void{
+				 cb_logtypes.dataProvider = new ArrayCollection(log_amf.getResult() as Array);
+				 cb_logtypes.labelField = 'name';
+			}
+			
+		]]>
+	</fx:Script>
+	<s:Panel width="100%" height="100%" dropShadowVisible="true" title="操作日志">
+		<component:Search x="0" top="0">
+		</component:Search>
+		<s:DataGrid id="dg" width="100%" height="86%" alternatingRowColors="[0xEEEEEE,0xFFFFFF]"
+					verticalCenter="15">
+		</s:DataGrid>
+		<component:Subpages id="sb" x="0" bottom="0">
+		</component:Subpages>
+		<s:HGroup right="6" top="-1" width="76">
+			<s:Button id="search_btn" width="73" label="查询" buttonMode="true" click="doSearch()"
+					  enabled="true"/>
+		</s:HGroup>
+		<s:HGroup right="4" top="0" width="227" gap="0">
+		</s:HGroup>
+		<s:Label left="10" top="8"  text="管理员账号或名称"/>
+		<s:TextInput left="95" top="2" id="lb_account_or_name"/>
+		<s:Label left="240" top="7"  text="状态"/>
+		<mx:ComboBox id="cb_state" left="271" top="1" width="80" height="25" openDuration="300"/>
+		<mx:DateField id="starttime" left="439" top="2" width="160" change="checkServerChooser(event)"
+					  dayNames="[日,一,二,三,四,五,六]" formatString="YYYY-MM-DD"
+					  monthNames="[一月,二月,三月,四月,五月,六月,七月,八月,九月,十月,十一月,十二月]"/>
+		<mx:DateField id="endtime" left="674" top="2" width="160" change="checkServerChooser(event)"
+					  dayNames="[日,一,二,三,四,五,六]" formatString="YYYY-MM-DD"
+					  monthNames="[一月,二月,三月,四月,五月,六月,七月,八月,九月,十月,十一月,十二月]"/>
+		<s:Label x="382" y="8" text="起始日期"/>
+		<s:Label x="621" y="7" text="结束日期"/>
+		<mx:ComboBox id="cb_logtypes" x="95" y="30" width="128" height="23"/>
+		<s:Label x="34" y="36" text="日志类型"/>
+	</s:Panel>	
+	
+</s:Module>
+

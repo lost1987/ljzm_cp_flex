@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Message;
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.UIComponent;
+			import mx.events.CloseEvent;
+			import mx.events.DragEvent;
+			import mx.managers.DragManager;
+			import mx.managers.PopUpManager;
+			
+			import ronco.bbxq.ObjAni;
+			
+			private var serverAmf:Amf;
+			private var checkAmf:Amf;
+			private var servers : ArrayCollection;
+			private var serversCopy : ArrayCollection;
+			private var closedServers : ArrayCollection = new ArrayCollection;
+			public var currentMainElement:Object;
+			public var to_server_id:String;
+			
+			public function init():void{
+				serverAmf = new Amf;
+				serverAmf.registerCallBack(setServerlistChooser);
+				serverAmf.startService('serverService','serversNoPageByExceptSid',this.to_server_id);
+			}
+			
+			private function setServerlistChooser(evt:AppEvent):void{
+				servers = new ArrayCollection(serverAmf.getResult() as Array);
+				serversCopy = Toolkit.clone(servers);
+				server_list_chooser.dataProvider = servers;
+			}
+			
+			protected function tw_closeHandler(event:CloseEvent):void
+			{
+				// TODO Auto-generated method stub
+				PopUpManager.removePopUp(this);
+			}
+			
+			private function resetServers():void{
+				servers = Toolkit.clone(serversCopy);
+				server_list_chooser.dataProvider = servers;
+				(server_list_chooser.dataProvider as ArrayCollection).refresh();
+				
+				
+				if(servers_list_from.dataProvider!=null){
+					servers_list_from.dataProvider.removeAll();
+					(servers_list_from.dataProvider as ArrayCollection).refresh();
+				}
+				
+				this.btn_merge.enabled = false;
+				closedServers = new ArrayCollection;
+			}
+			
+			private function confirmMerge():void{
+				var server_from_ids : String = '';
+				
+				for each(var item : Object in this.servers_list_from.dataProvider){
+					server_from_ids += item.id+',';
+				}
+				server_from_ids = server_from_ids.substr(0,server_from_ids.length-1);
+				
+				Message.confirm("确认要合服吗?",this,function():void{
+					   serverAmf = new Amf;
+					   serverAmf.registerCallBack(done);
+					   serverAmf.startService('serverToolService','op_merge',server_from_ids,to_server_id,AppConfig.admin);
+				});
+			}
+			
+			private function done(evt:AppEvent):void{
+					this.currentMainElement.uncheckAll();
+					this.currentMainElement.disabledBtnGroupInit();
+					var result : Object = serverAmf.getResult() as Object;
+					if(result.failed_serverids == '' || result.failed_serverids == null){
+						Alert.show('[合服]操作成功,请等待合服完成,具体信息请参看系统日志');
+					}else{
+						Alert.show('[合服]操作失败');
+					}
+					PopUpManager.removePopUp(this);
+			}
+			
+			private function checkStateFrom(evt:DragEvent):void{
+				evt.preventDefault();
+				if(evt.action == DragManager.COPY){//检测copy
+					return;
+				}
+				
+				//检测服务器状态
+				var server : Object = (evt.dragInitiator as Object).selectedItem;
+				checkAmf = new Amf;
+				checkAmf.registerCallBack(check_server_open,new Array(server));
+				checkAmf.startService('serverToolService','is_server_open',server.id);
+				
+			}
+			
+			
+			private function check_server_open(params:Array):void{
+					var server : Object = params[0];
+					var result : String = checkAmf.getResult().toString();
+					
+					if(result == '-2'){//服务器是关闭的
+							if(servers_list_from.dataProvider!=null)servers_list_from.dataProvider.addItem(server);
+							else servers_list_from.dataProvider = new ArrayCollection(new Array(server));
+							
+							if(this.servers_list_from.dataProvider.length > 0){
+								this.btn_merge.enabled = true;
+							}else{
+								this.btn_merge.enabled = false;
+							}
+					}
+					else if(result == '-3'){//服务器接口url错误
+						Alert.show("服务器接口的url错误,请检查");
+						(server_list_chooser.dataProvider as ArrayCollection).addItem(server);
+					}
+					else if(result == '-1'){//检测失败
+						Alert.show("windows 命令执行失败,请检查");
+						(server_list_chooser.dataProvider as ArrayCollection).addItem(server);
+					}
+					else if(result == '1'){//服务器开启
+						Alert.show("游戏服务是开启状态,请关闭游戏服务后,再操作");
+						(server_list_chooser.dataProvider as ArrayCollection).addItem(server);
+					}
+					else{
+						Alert.show("未知错误");
+						(server_list_chooser.dataProvider as ArrayCollection).addItem(server);
+					}
+					(server_list_chooser.dataProvider as ArrayCollection).refresh();
+			}
+			
+			private function filterServers():void{
+				if(this.searchField.text.replace(/\s+/g,'')!='')
+					(this.server_list_chooser.dataProvider as ArrayCollection).filterFunction = filter;
+				else
+					(this.server_list_chooser.dataProvider as ArrayCollection).filterFunction = null;
+				
+					(this.server_list_chooser.dataProvider as ArrayCollection).refresh();
+			}
+			
+			private function filter(item:Object):Boolean{
+				 if(item.name.indexOf(this.searchField.text) > -1)return true;
+				 return false;
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:TitleWindow id="tw" x="0" y="0" width="100%" height="100%" title="合服" close="tw_closeHandler(event)">
+		<s:List id="server_list_chooser" x="10" y="74" width="296" height="411" dragEnabled="true" dragMoveEnabled="true" allowMultipleSelection="false"  labelField="name"
+				contentBackgroundColor="#FFFFFF"></s:List>
+		<mx:TextInput x="10" y="19" width="225" id="searchField" keyUp="filterServers()" />
+		<s:Label x="10" y="4" width="170" height="17" text="输入服务器名检索"/>
+		<s:List id="servers_list_from" x="374" y="74" width="229" height="357" dropEnabled="true" dragMoveEnabled="true" labelField="name" dragDrop="checkStateFrom(event)" 
+				contentBackgroundColor="#FFFFFF"></s:List>
+		<s:Label x="10" y="57" width="155" text="选择服务器"/>
+		<s:Label x="374" y="59" color="#EE08B0" text="被合成服务器"/>
+		<s:Button x="374" y="450" width="79" height="35" label="合   成" fontSize="14" buttonMode="true" id="btn_merge" click="confirmMerge()" enabled="false"/>
+		<s:Label x="454" y="59" text="[可拖入多服]"/>
+		<s:Button x="484" y="450" width="80" height="35" label="重   置" fontSize="14" buttonMode="true" click="resetServers()"/>
+	</s:TitleWindow>
+</s:Group>

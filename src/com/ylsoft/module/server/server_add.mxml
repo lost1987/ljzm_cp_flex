@@ -22,6 +22,7 @@
 			
 			private var amf:Amf;
 			private var _amf:Amf;
+			private var gameamf : Amf;
 			private var fb :FormBottom;
 			private var listModule:String = 'server/server_list';
 			private var editModule:String = 'server/server_add';
@@ -38,6 +39,8 @@
 			private var _server_ip:String;
 			private var _server_port:String;
 			private var _sid : String;
+			private var _payurl:String;
+			private var _gamever:String;
 			
 			/*****表单对象****/
 			private var formObj:Object;
@@ -58,6 +61,11 @@
 					amf.setFaultMessage("无法获取运营商数据");
 					amf.registerCallBack(setBuissnessers);
 					amf.startService('adminService','getBuissnessers');
+					
+					gameamf = new Amf;
+					gameamf.setFaultMessage("无法获取游戏版本");
+					gameamf.registerCallBack(setGameVer);
+					gameamf.startService('gameVerService','listsNoPage');
 				}else{
 					this.panel.title = "编辑服务器";
 					this.sid.enabled = false;
@@ -96,8 +104,10 @@
 				_server_ip = Toolkit.blankClear(this.server_ip.text);
 				_server_port = Toolkit.blankClear(this.server_port.text);
 				_sid  = this.sid.text;
+				_payurl = this.payurl.text;
+				_gamever = this.gamever.selectedItem.id;
 				
-				if(_name!='' && _ip!='' && _port!='' && _dbuser!='' && _dbpwd != '' && _status != null && _buissnesser != null && _dynamic_dbname != '' && _server_ip!='' && _server_port != '' ){
+				if(_name!='' && _ip!='' && _port!='' && _dbuser!='' && _dbpwd != '' && _status != null && _buissnesser != null && _dynamic_dbname != '' && _server_ip!='' && _server_port != '' && _payurl != '' && _gamever != ''){
 					
 					if(_buissnesser == null){
 						Alert.show('请选择运营商');
@@ -123,6 +133,8 @@
 				formObj.dynamic_dbname = _dynamic_dbname;
 				formObj.server_ip = _server_ip;
 				formObj.server_port = _server_port;
+				formObj.payurl = _payurl;
+				formObj.gamever = _gamever;
 				
 				
 				if(AppConfig.formoperation == AppConfig.FORMEDIT){
@@ -174,6 +186,21 @@
 				}
 			}
 			
+			private function setGameVer(evt:AppEvent):void{
+				var gameverlist : ArrayCollection = new ArrayCollection(gameamf.getResult() as Array) ;
+				this.gamever.dataProvider = gameverlist;
+				this.gamever.labelField = 'version';
+				
+				if(AppConfig.FORMEDIT == AppConfig.formoperation){
+					for(var i:int = 0 ;  i<gameverlist.length ; i++){
+						  if(gameverlist.getItemAt(i).id == formObj.gamever){
+							     this.gamever.selectedIndex = i;
+								 break;
+						  }
+					}
+				}
+			}
+			
 			
 			private function setForm(evt:AppEvent):void{
 				formObj =    _amf.getResult() as Object;
@@ -185,6 +212,7 @@
 				server_ip.text = formObj.server_ip;
 				server_port.text = formObj.server_port;
 				dynamic_dbname.text = formObj.dynamic_dbname;
+				payurl.text = formObj.payurl;
 				sid.text = formObj.id;
 				if(formObj.status == 1)this.status.selectedIndex = 0;
 				else this.status.selectedIndex = 1;
@@ -193,6 +221,11 @@
 				amf = new Amf();
 				amf.registerCallBack(setBuissnessers);
 				amf.startService('adminService','getBuissnessers');
+				
+				gameamf = new Amf;
+				gameamf.setFaultMessage("无法获取游戏版本");
+				gameamf.registerCallBack(setGameVer);
+				gameamf.startService('gameVerService','listsNoPage');
 			}
 		]]>
 	</fx:Script>
@@ -231,5 +264,11 @@
 		<s:Label x="365" y="134" text="服务器唯一标识"/>
 		<s:TextInput id="sid" x="457" y="131" prompt="仅限数字" restrict="0-9"/>
 		<s:Label x="588" y="132" color="#F71100" text="*"/>
+		<s:Label x="46" y="446" text="游戏内充值链接"/>
+		<s:TextInput id="payurl" x="144" y="439" width="459"/>
+		<s:Label x="606" y="441" color="#FD2508" text="*"/>
+		<s:Label x="46" y="497" text="游戏版本"/>
+		<mx:ComboBox id="gamever" x="144" y="493" width="200"/>
+		<s:Label x="350" y="495" color="#FE0202" text="*"/>
 	</s:Panel>
 </s:Module>

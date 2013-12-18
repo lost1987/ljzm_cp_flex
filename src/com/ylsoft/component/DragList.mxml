@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
-		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:s="library://ns.adobe.com/flex/spark"  
 		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
 	<fx:Declarations>
 		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
@@ -9,6 +9,7 @@
 		<![CDATA[
 			import mx.collections.ArrayCollection;
 			import mx.events.DragEvent;
+			import mx.managers.DragManager;
 			
 			public var dataProvider_left : ArrayCollection;
 			public var dataProvider_right: ArrayCollection;
@@ -25,20 +26,26 @@
 			protected function list_left_dragEnterHandler(event:DragEvent):void
 			{
 				// TODO Auto-generated method stub
+				if(event.action == DragManager.COPY)event.preventDefault();//防止用户按住ctrl拖拽来复制项目
 				event.target.dropEnabled = ( event.target != event.dragInitiator );
 			}
 			
 			protected function list_right_dragEnterHandler(event:DragEvent):void
 			{
 				// TODO Auto-generated method stub
+				if(event.action == DragManager.COPY)event.preventDefault();//防止用户按住ctrl拖拽来复制项目
 				event.target.dropEnabled = ( event.target != event.dragInitiator );
+			}
+			
+			private function handle(event:DragEvent):void{
+				 if(event.action == DragManager.COPY)event.preventDefault();
 			}
 			
 		]]>
 	</fx:Script>
-	<s:List id="list_left" x="0" y="0" width="50%" height="100%" contentBackgroundColor="#D7D7D7" allowMultipleSelection="true"
-			dragEnabled="false" dragEnter="list_left_dragEnterHandler(event)" dragMoveEnabled="true"></s:List>
+	<s:List id="list_left" x="0" y="0" width="50%" height="100%" contentBackgroundColor="#D7D7D7" allowMultipleSelection="true"   dragDrop="handle(event)"
+			dragEnabled="false" dragEnter="list_left_dragEnterHandler(event)" dragMoveEnabled="true" ></s:List>
 	<s:List id="list_right" y="0" right="0" width="50%" height="100%"
-			contentBackgroundColor="#516884" dragEnabled="false" allowMultipleSelection="true"
+			contentBackgroundColor="#516884" dragEnabled="false" allowMultipleSelection="true" dragDrop="handle(event)"
 			dragEnter="list_right_dragEnterHandler(event)" dragMoveEnabled="true"></s:List>
 </s:Group>

@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:common="com.ylsoft.common.*"
+		  xmlns:component="com.ylsoft.component.*"
+		  width="100%" height="100%" creationComplete="init(event)">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.component.FormBottom;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			
+			private var amf:Amf;
+			private var _amf:Amf;
+			private var listModule:String = 'managefunc/gameseries_list';
+			private var editModule:String = 'managefunc/gameseries_add';
+			
+			/****表单属性*****/
+			private var _name:String;
+			private var _desp:String;
+			
+			/*****表单对象****/
+			private var formObj:Object;
+			
+			private function init(evt:Event):void{
+				/*****通用方法*****/
+				FlexGlobals.topLevelApplication.form_return.enabled=true;
+				FlexGlobals.topLevelApplication.form_return.addEventListener(MouseEvent.CLICK,returnTable);//定义返回列表方法
+				this.addElement(fb);
+				fb.save_btn.addEventListener(MouseEvent.CLICK,save);
+				
+				
+				/*******单独方法********/
+				if(AppConfig.formoperation == AppConfig.FORMADD){
+					this.panel.title = "添加系列";
+				}else{
+					this.panel.title = "编辑系列";
+					var id :Number = AppConfig.formid;
+					//发送service 请求
+					_amf = new Amf();
+					_amf.registerCallBack(setForm);
+					_amf.startService('gameSeriesService','edit',id);
+				}
+				
+			}
+			
+			
+			private function returnTable(evt:MouseEvent):void{
+				FlexGlobals.topLevelApplication.main_right.removeAllElements();
+				ModuleGlobal.Modulefactory_main = new ModuleFactory();
+				ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+				ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+				AppConfig.formoperation = null;	
+				FlexGlobals.topLevelApplication.form_return.removeEventListener(MouseEvent.CLICK,returnTable);
+			}
+			
+			private function formvalidate():Boolean{
+				this._name = Toolkit.blankClear(this.sname.text);
+				this._desp = this.desp.text;
+				
+				if(_name != '' && _desp != ''){
+					return true;
+				}
+				
+				return false;
+			}
+			
+			private function save(evt:MouseEvent):void{
+				
+				if(this.formvalidate() == false)return;
+				
+				formObj = new Object();
+				formObj.name = _name;
+				formObj.desp = _desp;
+				
+				if(AppConfig.formoperation == AppConfig.FORMEDIT){
+					formObj.id = AppConfig.formid;
+				}
+				
+				amf = new Amf();
+				amf.registerCallBack(saveComplete);
+				amf.startService('gameSeriesService','save',formObj);
+			}
+			
+			private function saveComplete(evt:AppEvent):void{
+				var result:Boolean = amf.getResult() as Boolean;
+				if(result){
+					FlexGlobals.topLevelApplication.main_right.removeAllElements();
+					ModuleGlobal.Modulefactory_main = new ModuleFactory();
+					ModuleGlobal.Modulefactory_main.setProgress(UIProgressBar.getInstance());
+					ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+					ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+					AppConfig.formoperation = null;	
+					AppConfig.formid = 0;
+					Alert.show('操作成功');
+					return;
+				}
+				Alert.show('操作失败');
+			}
+			
+			
+			
+			
+			private function setForm(evt:AppEvent):void{
+				formObj =    _amf.getResult() as Object;
+				sname.text = formObj.name;
+				desp.text = formObj.desp;
+				this._name = formObj.name;
+				this._desp = formObj.desp;
+			}
+		]]>
+	</fx:Script>
+	<s:Panel id="panel" x="0" y="0" width="100%" height="100%" >
+		<s:Form x="-1" y="0" width="100%" height="93%">
+			<s:layout>
+				<s:VerticalLayout/>
+			</s:layout>
+			<s:FormItem width="368" label="系列名">
+				<s:TextInput id="sname" width="288" restrict="a-z/0-9"/>
+			</s:FormItem>
+			<s:FormItem width="367" height="326" label="描述" >
+				<s:TextArea width="310" height="304" id="desp"/>
+			</s:FormItem>
+		</s:Form>
+		<component:FormBottom x="0" y="0" id="fb">
+		</component:FormBottom>
+	</s:Panel>
+</s:Module>

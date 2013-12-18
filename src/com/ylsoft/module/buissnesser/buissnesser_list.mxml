@@ -146,6 +146,36 @@
 					Alert.show(item.name+"的key已经复制到剪贴板");
 				}
 			}
+			
+			private function updatekey():void{
+				if(this.cd.selecteditems.length == 0){
+					Alert.show('请勾选要更新key的项');return;
+				}
+				
+				Message.confirm("确认要更新吗?",this,function():void{
+					var ids : String = '';
+					for each(var item:Object in cd.selecteditems){
+						ids += item.id+',';
+					}
+					ids = ids.substr(0,ids.length-1);
+					amf = new Amf();
+					amf.registerCallBack(updatekeyHandler);
+					amf.startService('buissnesserService','updatekey',ids);
+				});
+			}
+			
+			private function updatekeyHandler(evt:AppEvent):void{
+				this.sb.is_total_exec = false;
+				var result:Boolean = amf.getResult() as Boolean;
+				amf = null;
+				if(result){
+					this.init();
+					sb._next.enabled = true;
+					sb.currentPage = 1;
+				}
+				else
+					Alert.show("更新出错");
+			}
 		]]>
 	</fx:Script>
 	<s:Panel x="0" y="0" width="100%" height="100%">
@@ -155,11 +185,12 @@
 		</component:CB_Datagrid>
 		<component:Subpages id="sb" x="0" bottom="0">
 		</component:Subpages>
-		<s:HGroup right="2" top="2" width="300">
+		<s:HGroup right="2" top="2" width="395">
 			<s:Button y="3" right="89" height="25" label="查询"  buttonMode="true"/>
 			<s:Button y="3" right="17" height="25" label="删除" buttonMode="true" click="delAdmin(event)"/>
 			<s:Button y="3" right="233" height="25" label="添加" click="addAdmin(event)" buttonMode="true"/>
 			<s:Button y="3" right="161" height="25" label="编辑" click="editAdmin(event)" buttonMode="true"/>
+			<s:Button id="updatekey_btn" height="25" label="更新平台key" click="updatekey()"/>
 		</s:HGroup>
 		<s:Label y="40" right="10" width="156" height="16" color="#3D14EB" text="双击表格单元格key可以复制"/>
 	</s:Panel>
