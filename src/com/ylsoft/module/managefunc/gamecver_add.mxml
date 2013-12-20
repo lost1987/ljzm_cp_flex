@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:common="com.ylsoft.common.*"
+		  xmlns:component="com.ylsoft.component.*"
+		  width="100%" height="100%" creationComplete="init(event)">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.component.FormBottom;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			
+			private var amf:Amf;
+			private var _amf:Amf;
+			private var listModule:String = 'managefunc/gamecver_list';
+			private var editModule:String = 'managefunc/gamecver_add';
+			
+			/****表单属性*****/
+			private var _version:String;
+			private var _series_id:String;
+			private var _series_name:String;
+			
+			/*****表单对象****/
+			private var formObj:Object;
+			
+			private function init(evt:Event):void{
+				/*****通用方法*****/
+				FlexGlobals.topLevelApplication.form_return.enabled=true;
+				FlexGlobals.topLevelApplication.form_return.addEventListener(MouseEvent.CLICK,returnTable);//定义返回列表方法
+				this.addElement(fb);
+				fb.save_btn.addEventListener(MouseEvent.CLICK,save);
+				
+				
+				/*******单独方法********/
+				if(AppConfig.formoperation == AppConfig.FORMADD){
+					this.panel.title = "添加版本";
+					//获取所有系列
+					amf = new Amf();
+					amf.registerCallBack(setSeries);
+					amf.startService('gameSeriesService','listsNoPage');
+				}else{
+					this.panel.title = "编辑版本";
+					var id :Number = AppConfig.formid;
+					//发送service 请求
+					_amf = new Amf();
+					_amf.registerCallBack(setForm);
+					_amf.startService('gameCVerService','edit',id);
+				}
+				
+				this.series.labelField = 'name';
+				
+			}
+			
+			private function setSeries(evt:AppEvent):void{
+				  var seriesData:ArrayCollection = new ArrayCollection(amf.getResult() as Array);
+				  this.series.dataProvider = seriesData;
+				  if(AppConfig.FORMEDIT == AppConfig.formoperation){
+					    for(var i:int = 0; i< seriesData.length; i++){
+							if(seriesData.getItemAt(i).id == formObj.series){
+								  this.series.selectedIndex = i;
+								  break;
+							}
+						}
+				  }
+			}
+			
+			private function returnTable(evt:MouseEvent):void{
+				FlexGlobals.topLevelApplication.main_right.removeAllElements();
+				ModuleGlobal.Modulefactory_main = new ModuleFactory();
+				ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+				ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+				AppConfig.formoperation = null;	
+				FlexGlobals.topLevelApplication.form_return.removeEventListener(MouseEvent.CLICK,returnTable);
+			}
+			
+			private function formvalidate():Boolean{
+				this._version = Toolkit.blankClear(this.version.text);
+				this._series_id = this.series.selectedItem.id;
+				this._series_name = this.series.selectedItem.name;
+				
+				if(_version != '' && _series_id != '' && _series_name != ''){
+					return true;
+				}
+				
+				return false;
+			}
+			
+			private function save(evt:MouseEvent):void{
+				
+				if(this.formvalidate() == false)return;
+				
+				formObj = new Object();
+				formObj.version = _version;
+				formObj.series_id = _series_id;
+				formObj.series_name = _series_name;
+				
+				if(AppConfig.formoperation == AppConfig.FORMEDIT){
+					formObj.id = AppConfig.formid;
+				}
+				
+				amf = new Amf();
+				amf.registerCallBack(saveComplete);
+				amf.startService('gameCVerService','save',formObj);
+			}
+			
+			private function saveComplete(evt:AppEvent):void{
+				var result:Boolean = amf.getResult() as Boolean;
+				if(result){
+					FlexGlobals.topLevelApplication.main_right.removeAllElements();
+					ModuleGlobal.Modulefactory_main = new ModuleFactory();
+					ModuleGlobal.Modulefactory_main.setProgress(UIProgressBar.getInstance());
+					ModuleGlobal.Modulefactory_main.loadModule(listModule,FlexGlobals.topLevelApplication.main_right);
+					ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
+					AppConfig.formoperation = null;	
+					AppConfig.formid = 0;
+					Alert.show('操作成功');
+					return;
+				}
+				Alert.show('操作失败');
+			}
+			
+			
+			
+			
+			private function setForm(evt:AppEvent):void{
+				formObj =    _amf.getResult() as Object;
+				version.text = formObj.version.toString();
+				this._series_id = formObj.series;
+				this._series_name = formObj.name;
+				
+				//获取所有系列
+				amf = new Amf();
+				amf.registerCallBack(setSeries);
+				amf.startService('gameSeriesService','listsNoPage');
+			}
+			
+		]]>
+	</fx:Script>
+	<s:Panel id="panel" x="0" y="0" width="100%" height="100%" >
+		<s:Form x="-1" y="0" width="100%" height="93%">
+			<s:layout>
+				<s:VerticalLayout/>
+			</s:layout>
+			<s:FormItem width="169" label="版本">
+				<s:TextInput id="version" width="112"  restrict="0-9/."/><!--只允许输入数字和.-->
+			</s:FormItem>
+			<s:FormItem label="系列">
+				<mx:ComboBox id="series"/>
+			</s:FormItem>
+		</s:Form>
+		<component:FormBottom x="0" y="0" id="fb">
+		</component:FormBottom>
+	</s:Panel>
+</s:Module>

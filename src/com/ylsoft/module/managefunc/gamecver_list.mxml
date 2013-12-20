@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:component="com.ylsoft.component.*"
-		  xmlns:s="library://ns.adobe.com/flex/spark"  creationComplete="init()"
-		  xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:component="com.ylsoft.component.*"
+		  width="100%" height="100%" creationComplete="init()">
 	<fx:Declarations>
-		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<!-- 游戏版本 -->
 	</fx:Declarations>
 	<fx:Script>
 		<![CDATA[
@@ -21,7 +23,7 @@
 			import mx.controls.dataGridClasses.DataGridColumn;
 			import mx.core.FlexGlobals;
 			private var amf:Amf;
-			private var columsInited:Boolean;
+			private var columsInited:Boolean = false;
 			
 			private function init():void{
 				//禁用返回列表
@@ -29,7 +31,7 @@
 				initColumns();
 				amf = new Amf();
 				amf.registerCallBack(initDataGrid);
-				amf.startService('serverService','lists',new Pagelimit(0,AppConfig.PAGECOUNT));
+				amf.startService('gameCVerService','lists',new Pagelimit(0,AppConfig.PAGECOUNT));
 				initSubpage();
 			}
 			
@@ -50,65 +52,29 @@
 					var col1:DataGridColumn = new DataGridColumn();
 					col1.dataField = 'id';
 					col1.headerText = 'ID';
-					col1.width = 100;
+					col1.width = 200;
 					
 					var col2:DataGridColumn = new DataGridColumn();
-					col2.dataField = 'buissnesser';
-					col2.headerText = '运营商';
-					col2.width = 200;
+					col2.dataField = 'version';
+					col2.headerText = '版本名';
+					col2.width = 300;
 					
 					var col3:DataGridColumn = new DataGridColumn();
 					col3.dataField = 'name';
-					col3.headerText = '服务器';
+					col3.headerText = '版本系列';
 					col3.width = 200;
 					
-					var col4:DataGridColumn = new DataGridColumn();
-					col4.dataField = 'ip';
-					col4.headerText = 'IP';
-					col4.width = 200;
 					
-					var col5:DataGridColumn = new DataGridColumn();
-					col5.dataField = 'port';
-					col5.headerText = '端口';
-					col5.width = 100;
-					
-					var col6:DataGridColumn = new DataGridColumn();
-					col6.dataField = 'dynamic_dbname';
-					col6.headerText = '动态数据库名';
-					col6.width = 100;
-					
-					var col7:DataGridColumn = new DataGridColumn();
-					col7.dataField = 'version';
-					col7.headerText = '服务端版本';
-					col7.width = 100;
-					
-					var col10:DataGridColumn = new DataGridColumn();
-					col10.dataField = 'cversion';
-					col10.headerText = '客户端版本';
-					col10.width = 100;
-					
-					var col8:DataGridColumn = new DataGridColumn();
-					col8.dataField = 'mergeflag';
-					col8.headerText = '合服标识';
-					col8.width = 100;
-					
-					var col9:DataGridColumn = new DataGridColumn();
-					col9.dataField = 'mergetime';
-					col9.headerText = '合服时间';
-					col9.width = 200;
-					
-					
-					cd.dg.columns = cd.dg.columns.concat(new Array(col1,col2,col3,col4,col5,col6,col7,col10,col8,col9));
+					cd.dg.columns = cd.dg.columns.concat(new Array(col1,col2,col3));
 					columsInited = true;
 				}
 			}
-			
 			
 			private function addAdmin(evt:MouseEvent):void{
 				FlexGlobals.topLevelApplication.main_right.removeAllElements();
 				ModuleGlobal.Modulefactory_main = new ModuleFactory();
 				ModuleGlobal.Modulefactory_main.setProgress(UIProgressBar.getInstance());
-				ModuleGlobal.Modulefactory_main.loadModule('server/server_add',FlexGlobals.topLevelApplication.main_right);
+				ModuleGlobal.Modulefactory_main.loadModule('managefunc/gamecver_add',FlexGlobals.topLevelApplication.main_right);
 				ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
 				AppConfig.formoperation = AppConfig.FORMADD;
 			}
@@ -121,7 +87,7 @@
 				FlexGlobals.topLevelApplication.main_right.removeAllElements();
 				ModuleGlobal.Modulefactory_main = new ModuleFactory();
 				ModuleGlobal.Modulefactory_main.setProgress(UIProgressBar.getInstance());
-				ModuleGlobal.Modulefactory_main.loadModule('server/server_add',FlexGlobals.topLevelApplication.main_right);
+				ModuleGlobal.Modulefactory_main.loadModule('managefunc/gamecver_add',FlexGlobals.topLevelApplication.main_right);
 				ModuleGlobal.Modulefactory_pre_unload = new Array(ModuleGlobal.Modulefactory_main);
 				AppConfig.formoperation = AppConfig.FORMEDIT;
 				AppConfig.formid = cd.dg.selectedItem.id;
@@ -140,25 +106,27 @@
 					ids = ids.substr(0,ids.length-1);
 					amf = new Amf();
 					amf.registerCallBack(delComplete);
-					amf.startService('serverService','del',ids);
+					amf.startService('gameCVerService','del',ids);
 				});
 			}
 			
 			private function delComplete(evt:AppEvent):void{
 				this.sb.is_total_exec = false;
-				var result:Boolean = amf.getResult() as Boolean;
+				var result:Number = amf.getResult() as Number;
 				amf = null;
-				if(result){
+				if(result == 1){
 					this.init();
 					sb._next.enabled = true;
 					sb.currentPage = 1;
+				}else if(result == -1){
+					Alert.show("您选择的版本正在使用中,请确定停用后再删除!");
 				}
 				else
 					Alert.show("删除出错");
 			}
 			
 			private function initSubpage():void{
-				sb.service = 'serverService';
+				sb.service = 'gameCVerService';
 				sb.method = 'lists';
 				sb.methodTotal = 'num_rows';
 				sb.container = this;
@@ -167,10 +135,10 @@
 			
 		]]>
 	</fx:Script>
-	<s:Panel x="0" y="0" width="100%" height="100%">
+	<s:Panel width="100%" height="100%" dropShadowVisible="true" title="游戏版本管理">
 		<component:Search x="0" top="0">
 		</component:Search>
-		<component:CB_Datagrid id="cd" x="0" height="85%" verticalCenter="18">
+		<component:CB_Datagrid id="cd" height="85%" verticalCenter="18">
 		</component:CB_Datagrid>
 		<component:Subpages id="sb" x="0" bottom="0">
 		</component:Subpages>
@@ -180,5 +148,6 @@
 			<s:Button y="3" right="233" height="25" label="添加" click="addAdmin(event)" buttonMode="true"/>
 			<s:Button y="3" right="161" height="25" label="编辑" click="editAdmin(event)" buttonMode="true"/>
 		</s:HGroup>
-	</s:Panel>
+	</s:Panel>	
+	
 </s:Module>

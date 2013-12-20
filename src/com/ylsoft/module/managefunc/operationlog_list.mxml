@@ -109,7 +109,9 @@
 					{dataField:"statename",headerText:"状态",width:""},
 					{dataField:"donetime",headerText:"操作时间",width:"150"},
 					{dataField:"success_servernames",headerText:"收到消息的服务器",width:"300"},
-					{dataField:"failed_servernames",headerText:"未收到消息的服务器",width:"300"}
+					{dataField:"failed_servernames",headerText:"未收到消息的服务器",width:"300"},
+					{dataField:"merged_servernames",headerText:"被合服服务器",width:"300"},
+					{dataField:"param_str1",headerText:"更新操作的版本",width:"300"}
 				]
 				
 				for(var i:int = 0 ; i< columns_properties.length; i++){

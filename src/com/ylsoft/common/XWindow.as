@@ -83,7 +83,7 @@ package com.ylsoft.common
 		
 		public function show():void{
 			this.initEffects();
-			PopUpManager.addPopUp(content,parent);
+			PopUpManager.addPopUp(content,parent,true);
 			PopUpManager.centerPopUp(content);
 			this.showEffects.target = content;
 			this.showEffects.play();

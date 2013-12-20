@@ -54,6 +54,9 @@
 					this.panel.title = "编辑管理员";
 					this.t_adminname.enabled = false;
 					var id :Number = AppConfig.formid;
+					this.t_passwd.enabled = false;
+					this.t_passwd_again.enabled = false;
+					
 					//发送service 请求
 					_amf = new Amf();
 					_amf.registerCallBack(setForm);
@@ -83,7 +86,7 @@
 				 passwd_again   = Toolkit.blankClear(t_passwd_again.text);
 				 _buissnesser   = this.buissnesser.selectedItem;
 				
-				if(adminname!='' && flagname!='' && passwd!='' && passwd_again!=''){
+				if(adminname!='' && flagname!='' && (AppConfig.formoperation == AppConfig.FORMEDIT || (passwd!='' && passwd_again!=''))){
 					if(adminname.length < 6){
 						Alert.show('管理员账号至少6位');
 						return false;
@@ -94,12 +97,12 @@
 						return false;
 					}
 					
-					if(passwd.length < 6){
+					if(passwd.length < 6 && AppConfig.formoperation == AppConfig.FORMADD){
 						Alert.show('密码至少6位');
 						return false;
 					}
 					
-					if(passwd_again != passwd){
+					if(passwd_again != passwd && AppConfig.formoperation == AppConfig.FORMADD){
 						Alert.show('2次输入的密码不一致');
 						return false;
 					}

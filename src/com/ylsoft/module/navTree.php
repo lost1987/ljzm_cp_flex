@@ -86,7 +86,8 @@
    		<NODE name="运营商管理" module="buissnesser/buissnesser_list" permission="1"  visiable="true"></NODE>
    		<NODE name="服务器管理" module="server/server_list" permission="2"  visiable="true"></NODE>
    		<NODE name="申请管理员账号管理" module="adminfunc/admin_apply_manage_list" permission="4"  visiable="true"></NODE>
-   		<NODE name="游戏版本管理" module="managefunc/gamever_list" permission="8"  visiable="true"></NODE>
+   		<NODE name="服务端版本管理" module="managefunc/gamever_list" permission="8"  visiable="true"></NODE>
+   		<NODE name="客户端版本管理" module="managefunc/gamecver_list" permission="128"  visiable="true"></NODE>
    		<NODE name="版本系列管理" module="managefunc/gameseries_list" permission="16"  visiable="true"></NODE>
    		<NODE name="服务器工具" module="managefunc/servertool_list" permission="32"  visiable="true"></NODE>
    		<NODE name="操作日志" module="managefunc/operationlog_list" permission="64"  visiable="true"></NODE>

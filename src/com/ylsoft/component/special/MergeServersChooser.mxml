@@ -27,11 +27,19 @@
 			private var closedServers : ArrayCollection = new ArrayCollection;
 			public var currentMainElement:Object;
 			public var to_server_id:String;
+			public var to_server_series:String;
+			public var to_server_version:String;
+			public var to_server_cversion:String;
 			
 			public function init():void{
+				var info:Object = new Object;
+				info.sid = to_server_id;
+				info.series = to_server_series;
+				info.version = to_server_version;
+				info.cversion = to_server_cversion;
 				serverAmf = new Amf;
 				serverAmf.registerCallBack(setServerlistChooser);
-				serverAmf.startService('serverService','serversNoPageByExceptSid',this.to_server_id);
+				serverAmf.startService('serverService','serversNoPageByExceptSid',info);
 			}
 			
 			private function setServerlistChooser(evt:AppEvent):void{
@@ -80,6 +88,12 @@
 					this.currentMainElement.uncheckAll();
 					this.currentMainElement.disabledBtnGroupInit();
 					var result : Object = serverAmf.getResult() as Object;
+					
+					if(result.state == -2){
+						Alert.show('系统有进程正在进行中,请稍后操作');
+						return;
+					}
+					
 					if(result.failed_serverids == '' || result.failed_serverids == null){
 						Alert.show('[合服]操作成功,请等待合服完成,具体信息请参看系统日志');
 					}else{
