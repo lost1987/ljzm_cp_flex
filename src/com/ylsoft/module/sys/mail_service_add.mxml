@@ -36,7 +36,7 @@
 			
 			private var amf:Amf;
 			
-			private var fontlimitcount:int = 150;
+			private var fontlimitcount:int = 128;
 			
 			private var playerids:Array;
 			
@@ -275,10 +275,15 @@
 				<s:TextInput id="title" x="10" y="238" width="228" prompt="输入邮件标题" keyUp="checkSaveBtnEnabled()" focusOut="checkSaveBtnEnabled()"/>
 				<s:Label color="#FF0000" text="*"/>
 			</s:FormItem>
-			<s:FormItem x="0" y="315" width="579" label="内容">
+			<s:FormItem x="0" y="315" width="612" label="内容">
 				<s:layout>
 					<s:HorizontalLayout verticalAlign="top"/>
 				</s:layout>
+				<s:helpContent>
+					<s:VGroup>
+						<s:Label text="128个汉字"></s:Label>
+					</s:VGroup>
+				</s:helpContent>
 				<s:TextArea id="context" x="10" y="289" width="487" prompt="输入邮件内容" keyUp="checkSaveBtnEnabled()" focusOut="checkSaveBtnEnabled()"/>
 				<s:Label color="#FF0000" text="*"/>
 			</s:FormItem>
@@ -294,7 +299,7 @@
 				<s:layout>
 					<s:HorizontalLayout/>
 				</s:layout>
-				<s:Label id="fontcount" color="#ED500A" text="150"/>
+				<s:Label id="fontcount" color="#ED500A" text="128"/>
 				<s:Label text="字"/>
 			</s:FormItem>
 			<s:FormItem id="formitem_list_player" x="731" y="0" width="297" height="582" label="玩家">

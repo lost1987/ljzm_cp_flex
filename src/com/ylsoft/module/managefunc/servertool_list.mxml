@@ -768,7 +768,7 @@
 				this.createCUpdateWindow();
 			}
 			
-			private function confirmCUpdateConfirm():void{
+			private function confirmCUpdateConfirm(e:MouseEvent):void{
 				if(this.cd.selecteditem == null)return;
 				var server_id : String = this.cd.selecteditem.id;
 				var version : Object = new Object();

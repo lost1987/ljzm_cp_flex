@@ -93,7 +93,11 @@
 					col6.dataField = 'flagname';
 					col6.headerText = '操作人';
 					
-					cd.dg.columns = cd.dg.columns.concat(new Array(col1,col2,col3,col4,col5,col6));
+					var col7:DataGridColumn = new DataGridColumn();
+					col7.dataField = 'typename';
+					col7.headerText = '公告位置';
+					
+					cd.dg.columns = cd.dg.columns.concat(new Array(col1,col2,col3,col4,col7,col5,col6));
 					
 					columsInited = true;
 				}

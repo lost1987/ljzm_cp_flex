@@ -28,6 +28,7 @@
 			
 			private var amf:Amf;
 			private var _amf:Amf;
+			private var noticeAmf:Amf;
 			private var listModule:String = 'sys/notice_list';
 			private var editModule:String = 'sys/notice_add';
 			
@@ -55,6 +56,15 @@
 				
 				this.type.dataProvider = new ArrayCollection([{name:'单次',value:0},{name:'循环',value:1}]);//0:一次性 1:循环
 				this.type.labelField = 'name';
+				
+				noticeAmf = new Amf;
+				noticeAmf.registerCallBack(setNoticeTypes);
+				noticeAmf.startService('noticeService','getNoticeTypes');
+			}
+			
+			private function setNoticeTypes(evt:AppEvent):void{
+				this.notice_type.dataProvider = new ArrayCollection(noticeAmf.getResult() as Array);
+				notice_type.labelField = 'name';
 			}
 			
 			private function returnTable(evt:MouseEvent):void{
@@ -67,7 +77,12 @@
 			}
 			
 			private function formvalidate():Boolean{
-				return true;
+				if(this.servers.source != null && this.starttime.text != '' 
+						&& this.endtime.text != '' && this.time.text !=''
+						&& this.context.text != '' && this.context.text.length < 128){
+					   return true;
+				}
+				return false;
 			}
 			
 			private function save(evt:MouseEvent):void{
@@ -82,6 +97,7 @@
 				formObj.context = this.context.text;
 				formObj.type = this.type.selectedItem.value;
 				formObj.admin = AppConfig.admin;
+				formObj.notice_type = this.notice_type.selectedItem.id;
 				
 				if(AppConfig.formoperation == AppConfig.FORMEDIT){
 					formObj.id = AppConfig.formid;
@@ -177,6 +193,14 @@
 				</mx:ComboBox>
 				<s:Label color="#FF1705" text="*"/>
 			</s:FormItem>
+			<s:FormItem width="464" label="位置">
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle"/>
+				</s:layout>
+				<s:Spacer width="271" height="10"/>
+				<mx:ComboBox id="notice_type" x="231" y="0"/>
+				<s:Label x="398" y="4" color="#FF0606" text="*"/>
+			</s:FormItem>
 			<s:FormItem width="463" label="开始时间">
 				<s:layout>
 					<s:HorizontalLayout verticalAlign="middle"/>
@@ -201,10 +225,15 @@
 				<s:TextInput id="time" width="51" keyUp="checkServerChooser(event)" focusOut="checkServerChooser(event)" restrict="0-9"/>
 				<s:Label color="#FF0000" text="*"/>
 			</s:FormItem>
-			<s:FormItem width="486" height="199" label="内容">
+			<s:FormItem width="552" height="199" label="内容">
 				<s:layout>
 					<s:HorizontalLayout verticalAlign="top"/>
 				</s:layout>
+				<s:helpContent>
+					<s:VGroup>
+						<s:Label text="128个汉字"></s:Label>
+					</s:VGroup>
+				</s:helpContent>
 				<s:TextArea id="context" width="420" height="171" prompt="输入公告内容" keyUp="checkServerChooser(event)" focusOut="checkServerChooser(event)" />
 				<s:Label color="#FF0202" text="*"/>
 			</s:FormItem>

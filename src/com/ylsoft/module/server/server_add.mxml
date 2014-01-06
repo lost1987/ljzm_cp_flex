@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:components="com.ylsoft.component.*"
 		  xmlns:s="library://ns.adobe.com/flex/spark" creationComplete="init(event)"
 		  xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
 	<fx:Declarations>
@@ -24,7 +24,6 @@
 			private var _amf:Amf;
 			private var gameamf : Amf;
 			private var gameamf1:Amf;
-			private var fb :FormBottom;
 			private var listModule:String = 'server/server_list';
 			private var editModule:String = 'server/server_add';
 			
@@ -51,8 +50,6 @@
 				/*****通用方法*****/
 				FlexGlobals.topLevelApplication.form_return.enabled=true;
 				FlexGlobals.topLevelApplication.form_return.addEventListener(MouseEvent.CLICK,returnTable);//定义返回列表方法
-				fb = new FormBottom();
-				this.addElement(fb);
 				fb.save_btn.addEventListener(MouseEvent.CLICK,save);
 				
 				
@@ -115,7 +112,7 @@
 				_gamever = this.gamever.selectedItem.id;
 				_gamecver = this.gamecver.selectedItem.id;
 				
-				if(_name!='' && _ip!='' && _port!='' && _dbuser!='' && _dbpwd != '' && _status != null && _buissnesser != null && _dynamic_dbname != '' && _server_ip!='' && _server_port != '' && _payurl != '' && _gamever != '' && _gamecver !=''){
+				if(_name!='' && _ip!='' && _port!='' && _dbuser!='' && _dbpwd != '' && _status != null && _buissnesser != null && _dynamic_dbname != '' && _server_ip!='' && _server_port != ''  && _gamever != '' && _gamecver !=''){
 					
 					if(_buissnesser == null){
 						Alert.show('请选择运营商');
@@ -268,7 +265,9 @@
 			}
 		]]>
 	</fx:Script>
-	<s:Panel id="panel" x="0" y="0" width="100%" height="100%" >
+	<s:Panel id="panel" x="0" y="0" width="100%" height="94%" >
+		<s:Scroller y="0" width="100%" height="100%">
+			<s:Group width="100%" height="100%" id="gp">
 		<s:Label x="46" y="28" text="服务器名称"/>
 		<s:Label x="46" y="84" text="IP"/>
 		<s:Label x="46" y="137" text="端口"/>
@@ -304,13 +303,20 @@
 		<s:TextInput id="sid" x="457" y="131" prompt="仅限数字" restrict="0-9"/>
 		<s:Label x="588" y="132" color="#F71100" text="*"/>
 		<s:Label x="46" y="446" text="游戏内充值链接"/>
-		<s:TextInput id="payurl" x="144" y="439" width="459"/>
-		<s:Label x="606" y="441" color="#FD2508" text="*"/>
+		<s:TextInput id="payurl" x="144" y="439" width="459"
+					 prompt="示例: http://www.9797wan.com/payxxxx"/>
 		<s:Label x="46" y="497" text="服务端版本"/>
 		<mx:ComboBox id="gamever" x="144" y="493" width="200"/>
 		<s:Label x="350" y="495" color="#FE0202" text="*"/>
 		<s:Label x="46" y="545" text="客户端版本"/>
 		<mx:ComboBox id="gamecver" x="144" y="540" width="200"/>
 		<s:Label x="350" y="541" color="#FF0C0C" text="*"/>
+		</s:Group>
+		</s:Scroller>
 	</s:Panel>
+	<components:FormBottom id="fb" bottom="0">
+		<components:layout>
+			<s:BasicLayout/>
+		</components:layout>
+	</components:FormBottom>
 </s:Module>
