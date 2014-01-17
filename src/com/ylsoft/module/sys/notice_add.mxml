@@ -146,7 +146,7 @@
 					var parttern : RegExp = /-|:|\s+/g;
 					var startdate:String = this.starttime.text.replace(parttern,'');
 					var enddate : String = this.endtime.text.replace(parttern,'');
-					if(int(startdate) > int(enddate) && this.type.selectedIndex!=0){
+					if(Number(startdate) > Number(enddate) && this.type.selectedIndex!=0){
 						Alert.show('起始日期不能大于结束日期');
 						this.fb.save_btn.enabled = false;return;
 					}

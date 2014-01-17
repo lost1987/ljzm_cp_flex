@@ -58,6 +58,16 @@
 				column_server1.headerText = '开启';
 				cd_server.dg.columns = cd_server.dg.columns.concat(new Array(column_server1));
 				
+				var column_server2 : DataGridColumn = new DataGridColumn();
+				column_server2.dataField = 'mergeflag';
+				column_server2.headerText = '合服标识';
+				cd_server.dg.columns = cd_server.dg.columns.concat(new Array(column_server2));
+				
+				var column_server3 : DataGridColumn = new DataGridColumn();
+				column_server3.dataField = 'complexflag';
+				column_server3.headerText = '混服标识';
+				cd_server.dg.columns = cd_server.dg.columns.concat(new Array(column_server3));
+				
 				if(AppConfig.buissnesser!=null){
 					this.cd_buissnesser.initData(AppConfig.buissnesser);
 					
@@ -157,34 +167,17 @@
 						if(is_exsit_selected_servers(obj.id,_selectedServers)){
 							if(this._isbuissnessCheckStateChange == true){
 								for(var i:int = 0;i<_selectedServers.length;i++){
+									trace(_selectedServers[i].id);
 									if(obj.id == _selectedServers.getItemAt(i).id){
 										obj._select = false;
 										_selectedServers.removeItemAt(i);
 									}
 								}
-								this._isbuissnessCheckStateChange = false;
-							}else{
-								for( i = 0;i<_selectedServers.length;i++){
-										if(obj.id != _selectedServers.getItemAt(i).id){
-											obj._select = false;
-										}else{
-											obj._select = true;
-										}
-								}
 							}
 						}
 					}
+					this._isbuissnessCheckStateChange = false;
 				}
-				
-				for each(obj in temp){
-					if(is_exsit_selected_servers(obj.id,_selected_right_servers)){
-						obj._select = true;
-						if(!is_exsit_selected_servers(obj.id,_selectedServers)){
-							_selectedServers.addItem(obj);
-						}
-					}
-				}
-				
 				this.cd_server.dg.invalidateList();
 			}
 			
@@ -225,6 +218,7 @@
 							}
 					}
 				}
+				this.output_test();
 			}
 			
 			private function checkAll_buissnessers(obj:Object):void{
@@ -300,6 +294,12 @@
 					this.parent.removeEventListener(KeyboardEvent.KEY_UP,cancelHandler);
 					PopUpManager.removePopUp(this);
 				}
+			}
+			
+			private function output_test():void{
+				  for each(var obj : Object in this._selectedServers){
+					  trace(obj.id);
+				  }
 			}
 		]]>
 	</fx:Script>

@@ -22,13 +22,13 @@ package com.ylsoft.core
 		public static const FORMADD:String = 'add';
 		public static const FORMEDIT:String = 'edit';
 		public static const PAGECOUNT:Number = 18;
-		public static const USE_WAITING_IMAGE:Boolean = true;
 		
 		
 		public static var admin:Object;//当前用户信息
 		public static var formoperation:String;//当前表单是添加还是更新
 		public static var formid:Number ;//如果请求是修改form那么 当前选中项的id值
 		public static var buissnesser:ArrayCollection;
+		public static var USE_WAITING_IMAGE:Boolean = true;
 		
 		//权限
 		public static var PERMISSIONS:ArrayCollection ;

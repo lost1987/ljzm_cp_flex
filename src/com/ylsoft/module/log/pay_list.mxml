@@ -43,6 +43,7 @@
 			private var detail_amf:Amf;
 			public var server:Object;
 			private var _total:Object = new Object;
+			private var _totalamf : Amf;
 			
 			private function init():void{
 				//禁用返回列表
@@ -67,6 +68,15 @@
 				cd.initData(result);
 				initSubpage();
 				amf = null;
+				
+				this._totalamf = new Amf;
+			    this._totalamf.registerCallBack(setTotalPay);
+				this._totalamf.startService('payService','payTotal',getCondition());
+			}
+			
+			private function setTotalPay(evt:AppEvent):void{
+				var totalpay:String = _totalamf.getResult().toString();
+				this.total_pay.text = totalpay+' 元';
 			}
 			
 			private function initColumns():void{
@@ -156,6 +166,7 @@
 				condition.account_name = this.t_account_name.text;
 				condition.starttime = this.starttime.text;
 				condition.endtime = this.endtime.text;
+				condition.orderid = this.orderid.text;
 				
 				condition.level_start = this.level_start.value == 0 ? '' : this.level_start.value;
 				condition.level_limit = this.level_limit.value == 0 ? '' : this.level_limit.value;
@@ -236,6 +247,7 @@
 				excel.variables.vip_start = this.vip_start.value == -1 ? '' : this.vip_start.value;
 				excel.variables.vip_limit = this.vip_limit.value == -1 ? '' : this.vip_limit.value;
 				excel.variables.account_name = this.t_account_name.text;
+				excel.variables.orderid = this.orderid.text;
 				
 				FlexGlobals.topLevelApplication.btn_excel_export.enabled = true;
 			}
@@ -274,6 +286,10 @@
 		<mx:NumericStepper id="vip_start" x="676" y="1" maximum="12" minimum="-1" value="-1"/>
 		<mx:NumericStepper id="vip_limit" x="761" y="1" maximum="12" minimum="-1" value="-1" />
 		<s:Label x="737" y="7" text="~~"/>
+		<s:Label x="211" y="35" text="订单号"/>
+		<s:TextInput id="orderid" x="289" y="30" width="245"/>
+		<s:Label x="563" y="36" text="金额总计"/>
+		<s:Label id="total_pay" x="619" y="38" width="98" color="#C9330A"/>
 	</s:Panel>	
 	
 </s:Module>

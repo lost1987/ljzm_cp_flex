@@ -29,6 +29,10 @@ package com.ylsoft.common
 			}else{
 				this.setStyle('color',color);
 			}
+			
+			if(value.hasOwnProperty('weight')){
+				this.setStyle('fontWeight',value.weight);
+			}
 		}
 	}
 }

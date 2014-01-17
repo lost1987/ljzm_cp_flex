@@ -51,6 +51,16 @@
 				column_server1.headerText = '开启';
 				cd_server.columns = cd_server.columns.concat(new Array(column_server1));
 				
+				var column_server2 : DataGridColumn = new DataGridColumn();
+				column_server2.dataField = 'mergeflag';
+				column_server2.headerText = '合服标识';
+				cd_server.columns = cd_server.columns.concat(new Array(column_server2));
+				
+				var column_server3 : DataGridColumn = new DataGridColumn();
+				column_server3.dataField = 'complexflag';
+				column_server3.headerText = '混服标识';
+				cd_server.columns = cd_server.columns.concat(new Array(column_server3));
+				
 				this.parent.addEventListener(KeyboardEvent.KEY_UP,cancelHandler);
 				
 				if(AppConfig.buissnesser!=null){

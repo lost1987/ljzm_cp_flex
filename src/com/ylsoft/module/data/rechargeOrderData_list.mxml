@@ -16,6 +16,7 @@
 			import com.ylsoft.common.Toolkit;
 			import com.ylsoft.common.XWindow;
 			import com.ylsoft.component.BuissnesserChooserMuti;
+			import com.ylsoft.component.BuissnesserChooserSingle;
 			import com.ylsoft.core.Amf;
 			import com.ylsoft.core.AppConfig;
 			import com.ylsoft.core.ModuleFactory;
@@ -32,7 +33,7 @@
 			import mx.utils.ObjectUtil;
 			private var amf:Amf;
 			private var _amf:Amf;
-			public var servers:ArrayCollection = new ArrayCollection;
+			public var server:Object;
 			private var _total:Object = new Object;
 			private var _dateformat:DateFormatter = new DateFormatter();
 			
@@ -139,7 +140,7 @@
 			
 			
 			private function buissnesserChooser():void{
-				var bc : BuissnesserChooserMuti = new BuissnesserChooserMuti();
+				var bc : BuissnesserChooserSingle = new BuissnesserChooserSingle();
 				bc.width = 800;
 				bc.height = 400;
 				XWindow.getInstance().addWindow(bc,this).show();
@@ -149,7 +150,7 @@
 				var condition : Object = new Object();
 				condition.starttime = this.starttime.text;
 				condition.endtime = this.endtime.text;
-				condition.servers = this.servers.source;
+				condition.server = this.server;
 				return condition;
 			}
 			
@@ -162,7 +163,7 @@
 			
 			
 			private function checkServerChooser(evt:Event):void{
-				if(this.servers.length == 0 || this.starttime.text == '' || this.endtime.text == '')
+				if(this.server == null || this.starttime.text == '' || this.endtime.text == '')
 					this.search_btn.enabled = false;
 				else{
 					var parttern : RegExp = /-|:/g;
@@ -200,12 +201,13 @@
 			private function buissnessChooseComplete(evt:AppEvent):void{
 				var starttime:String = this.starttime.text;
 				var endtime:String = this.endtime.text;
-				if(starttime!='' && endtime !='' && this.servers.length >0){
+				this.server_name.text = this.server.name;
+				if(starttime!='' && endtime !='' && this.server != null){
 					this.search_btn.enabled = true;
 					this.today_btn.enabled = true;
 					this.seven_btn.enabled = true;
 					FlexGlobals.topLevelApplication.dispatchEvent(new AppEvent(AppEvent.EXCEL_EXPORT_READY));
-				}else if(this.servers.length > 0){
+				}else if(this.server != null){
 					this.today_btn.enabled = true;
 					this.seven_btn.enabled = true;
 				}
@@ -224,11 +226,7 @@
 				excel.end_time = this.endtime.text;
 				excel.excel_name = '玩家充值排名';
 				excel.module_key = AppConfig.module_key;
-				var server_ids:Array = [];
-				for each(var server:Object in this.servers){
-					server_ids.push(server.id);
-				}
-				excel.server_id = server_ids.join(',');
+				excel.server_id = server.id;
 				excel.httpBuildQuery();
 				FlexGlobals.topLevelApplication.btn_excel_export.enabled = true;
 			}
@@ -251,8 +249,7 @@
 		<mx:LinkButton x="10" y="30" label="最近7天" enabled="false" id="seven_btn" click = "search_seven()"/>
 		<s:HGroup y="34" right="0" width="302">
 			<s:Label  fontWeight="bold" text="已选择"/>
-			<s:Label id="servercount"  color="#FE0000" fontWeight="bold" text="0"/>
-			<s:Label  fontWeight="bold" text="台服务器"/>
+			<s:Label id="server_name"  color="#FE0000" fontWeight="bold" text="0"/>
 		</s:HGroup>
 		<s:Form x="0" bottom="0" width="100%" height="10%">
 			<s:layout>

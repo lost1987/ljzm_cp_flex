@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:component="com.ylsoft.component.*"
+		  width="100%" height="100%" creationComplete="init()">
+	<!--平台按月来分析充值-->
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.ylsoft.common.ColorLabel;
+			import com.ylsoft.common.Excel;
+			import com.ylsoft.common.Message;
+			import com.ylsoft.common.Pagelimit;
+			import com.ylsoft.common.Toolkit;
+			import com.ylsoft.common.XWindow;
+			import com.ylsoft.component.BuissnesserChooserMuti;
+			import com.ylsoft.component.BuissnesserChooserSingle;
+			import com.ylsoft.core.Amf;
+			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.ModuleFactory;
+			import com.ylsoft.core.ModuleGlobal;
+			import com.ylsoft.core.UIProgressBar;
+			import com.ylsoft.event.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.core.FlexGlobals;
+			import mx.formatters.DateFormatter;
+			import mx.managers.PopUpManager;
+			import mx.utils.ObjectUtil;
+			private var amf:Amf;
+			private var _amf:Amf;
+			public var server:Object;
+			private var _total:Object = new Object;
+			private var _dateformat:DateFormatter = new DateFormatter();
+			private var _starttime:String;
+			private var _endtime : String;
+			private var _year:String;
+			private var _month:String;
+			
+			private function init():void{
+				//禁用返回列表
+				FlexGlobals.topLevelApplication.form_return.enabled=false;
+				initColumns();
+				_dateformat.formatString = 'YYYY-MM-DD';
+				this.addEventListener(AppEvent.BUISSNESSER_CHOOSE_COMPLETE,buissnessChooseComplete);
+				
+				var years : ArrayCollection = new ArrayCollection;
+				for(var i:int = 2013 ; i< 2100 ;i++){
+					years.addItem({'year':i});
+				}
+				
+				this.year.dataProvider = years;
+				this.year.labelField = 'year';
+				this.year.selectedIndex = -1;
+				
+				
+				var months:ArrayCollection = new ArrayCollection;
+				for(i =1 ; i< 13 ; i++){
+					months.addItem({'month':i});
+				}
+				this.month.dataProvider = months;
+				this.month.labelField ='month';
+				this.month.selectedIndex = -1;
+			}
+			
+			public function initDataGrid(evt:AppEvent):void{
+				var result:ArrayCollection
+				if(amf != null){
+					result = new ArrayCollection(amf.getResult() as Array);
+					var _total_money:Number = 0;
+					for each(var obj:Object in result){
+						  _total_money += Number(obj.money.substring(1,obj.money.length));
+					}
+					this.total_money.text = '￥' + _total_money.toString();
+				}
+				cd.initData(result);
+				
+				FlexGlobals.topLevelApplication.dispatchEvent(new AppEvent(AppEvent.EXCEL_EXPORT_READY));
+			}
+			
+			private function initColumns():void{
+				var col1:DataGridColumn = new DataGridColumn();
+				col1.dataField = 'date';
+				col1.headerText = '日期';
+				col1.width = 200;
+				col1.itemRenderer = new ClassFactory(ColorLabel);
+				
+				var col2:DataGridColumn = new DataGridColumn();
+				col2.dataField = 'money';
+				col2.headerText = '充值金额';
+				col2.width = 120;
+				col2.itemRenderer = new ClassFactory(ColorLabel);
+				
+				
+				cd.dg.columns = cd.dg.columns.concat(new Array(col1,col2));
+			}
+			
+			
+			
+			private function buissnesserChooser():void{
+				var bc : BuissnesserChooserSingle = new BuissnesserChooserSingle();
+				bc.width = 800;
+				bc.height = 400;
+				XWindow.getInstance().addWindow(bc,this).show();
+			}
+			
+			private function getCondition():Object{
+				var condition : Object = new Object();
+				condition.server = this.server;
+				condition.starttime = this._starttime;
+				condition.endtime = this._endtime;
+				return condition;
+			}
+			
+			
+			private function validate():Boolean{
+				if(this._starttime == null || this._endtime == null || this.server == null){
+					Alert.show('请选择月份和服务器');
+					return false;
+				}
+				return true;
+			}
+			
+			private function doSearch():void{
+				if(!this.validate())return;
+				
+				amf = new Amf();
+				amf.setFaultMessage("通信失败");
+				amf.registerCallBack(initDataGrid);
+				amf.startService('payMonthService','lists',getCondition());
+			}
+			
+			
+			private function checkServerChooser():void{
+				if(this.server == null)
+					this.search_btn.enabled = false;
+				else{
+					this.search_btn.enabled = true;
+					FlexGlobals.topLevelApplication.dispatchEvent(new AppEvent(AppEvent.EXCEL_EXPORT_READY));
+				}
+			}
+			
+			
+			private function buissnessChooseComplete(evt:AppEvent):void{
+				this.server_name.text = this.server.name;
+				if(this.server != null && this._starttime !=null && this._endtime != null){
+					this.search_btn.enabled = true;
+					FlexGlobals.topLevelApplication.dispatchEvent(new AppEvent(AppEvent.EXCEL_EXPORT_READY));
+				}
+				else {
+					this.search_btn.enabled = false;
+				}
+			}
+			
+			private function caculateDate():void{
+				_year = this.year.selectedItem.year;
+				_month = this.month.selectedItem.month;
+				
+				if(_year!=null && _month!=null){
+					_starttime = new Date(_year,Number(_month)-1).toString();
+					_starttime = _dateformat.format(_starttime);
+					//trace('starttime:'+_starttime);
+					
+					var time : Number = new Date(_year,_month).time-60*60*1000;
+					 _endtime = new Date(time).toString();
+					_endtime  = _dateformat.format(_endtime);
+					//trace('endtime:'+_endtime);
+				}
+				
+				this.checkServerChooser();
+			}
+			
+			public function exportExcel(evt:AppEvent):void{
+				var excel : Excel = Excel.getInstance();
+				excel.address = AppConfig.EXCEL_GATEWAY;
+				excel.dgcolumns = this.cd.dg;
+				excel.start_time = this._starttime;
+				excel.end_time = this._endtime;
+				excel.excel_name = '月充值明细_'+server.bname+'_'+server.name;
+				excel.module_key = AppConfig.module_key;
+				excel.server_id = server.id;
+				excel.httpBuildQuery();
+				FlexGlobals.topLevelApplication.btn_excel_export.enabled = true;
+			}
+		]]>
+	</fx:Script>
+	<s:Panel width="100%" height="100%" dropShadowVisible="true" title="月充值明细">
+		<component:Search x="0" top="0">
+		</component:Search>
+		<component:CB_Datagrid id="cd" height="80%" verticalCenter="5">
+		</component:CB_Datagrid>
+		<s:HGroup right="2" top="2" width="300">
+			<s:Button id="search_btn"  label="查询" click="doSearch()" enabled="false" buttonMode="true"/>
+			<s:Button  label="选择运营商和服务器" click="buissnesserChooser()" buttonMode="true"/>
+		</s:HGroup>
+		<s:HGroup y="34" right="0" width="302">
+			<s:Label  fontWeight="bold" text="已选择"/>
+			<s:Label id="server_name"  color="#FE0000" fontWeight="bold" text="0"/>
+		</s:HGroup>
+		<s:Form x="0" bottom="0" width="100%" height="10%">
+			<s:layout>
+				<s:HorizontalLayout paddingTop="3" verticalAlign="middle"/>
+			</s:layout>
+			<s:FormItem label="总充值金额" color="#000102">
+				<s:layout>
+					<s:HorizontalLayout/>
+				</s:layout>
+				<s:Label id="total_money" color="#085E8F" text="0"/>
+			</s:FormItem>
+		</s:Form>
+		<s:Form x="0" y="1" width="70%" height="10%">
+			<s:layout>
+				<s:BasicLayout/>
+			</s:layout>
+			<s:FormItem width="166" label="年份">
+				<s:helpContent>
+					<s:VGroup>
+						<s:Label text="*" color="#FF0202"></s:Label>
+					</s:VGroup>
+				</s:helpContent>
+				<mx:ComboBox id="year" x="10" y="10" width="100" height="25" buttonMode="true"/>
+			</s:FormItem>
+			<s:FormItem x="155" y="0" width="119" label="月份">
+				<s:helpContent>
+					<s:VGroup>
+						<s:Label width="10" height="13" color="#FF0202" text="*"></s:Label>
+					</s:VGroup>
+				</s:helpContent>
+				<mx:ComboBox id="month" x="292" y="10" width="50" height="25" buttonMode="true" change="caculateDate()"/>
+			</s:FormItem>
+		</s:Form>
+	</s:Panel>	
+	
+</s:Module>

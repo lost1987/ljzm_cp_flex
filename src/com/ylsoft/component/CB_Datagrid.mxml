@@ -42,12 +42,7 @@
 					this.selecteditem = dataArray.getItemAt(dg.selectedIndex);
 				}else{
 					dataArray.getItemAt(dg.selectedIndex)._select = false;
-					for each(var item:Object in dataArray){
-						if(item._select){
-							this.selecteditem  = item;
-							break;
-						}
-					}
+					this.selecteditem = dataArray.getItemAt(dg.selectedIndex);
 				}
 				dg.dataProvider = dataArray;
 				checkSelectedItems();

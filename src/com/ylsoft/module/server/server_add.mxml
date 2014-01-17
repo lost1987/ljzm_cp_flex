@@ -11,6 +11,7 @@
 			import com.ylsoft.component.FormBottom;
 			import com.ylsoft.core.Amf;
 			import com.ylsoft.core.AppConfig;
+			import com.ylsoft.core.EventDelegate;
 			import com.ylsoft.core.ModuleFactory;
 			import com.ylsoft.core.ModuleGlobal;
 			import com.ylsoft.core.UIProgressBar;
@@ -42,6 +43,9 @@
 			private var _payurl:String;
 			private var _gamever:String;
 			private var _gamecver:String;
+			private var _ck_complexed:int;//被混服
+			private var _ck_complex_main:int;//被合服
+			private var _complex_server_id:String;//目标服ID
 			
 			/*****表单对象****/
 			private var formObj:Object;
@@ -111,6 +115,14 @@
 				_payurl = this.payurl.text;
 				_gamever = this.gamever.selectedItem.id;
 				_gamecver = this.gamecver.selectedItem.id;
+				_ck_complexed = this.ck_complex.selected ? 1 : -1;
+				_ck_complex_main = this.ck_complex_main.selected ? 1 : -1;
+				_complex_server_id = this.complex_server.selectedItem == null ? '' : this.complex_server.selectedItem.id;
+				
+				if(_ck_complexed == 1 && _complex_server_id == ''){
+					Alert.show('请选择混服目标服务器');
+					return false;
+				}
 				
 				if(_name!='' && _ip!='' && _port!='' && _dbuser!='' && _dbpwd != '' && _status != null && _buissnesser != null && _dynamic_dbname != '' && _server_ip!='' && _server_port != ''  && _gamever != '' && _gamecver !=''){
 					
@@ -150,6 +162,9 @@
 				formObj.payurl = _payurl;
 				formObj.gamever = _gamever;
 				formObj.gamecver = _gamecver;
+				formObj.ck_complexed = _ck_complexed;
+			    formObj.ck_complex_main = _ck_complex_main;
+				formObj.complex_server_id = _complex_server_id;
 				
 				
 				if(AppConfig.formoperation == AppConfig.FORMEDIT){
@@ -164,6 +179,7 @@
 				
 				amf = new Amf();
 				amf.registerCallBack(saveComplete);
+				AppConfig.USE_WAITING_IMAGE = false;
 				amf.startService('serverService','save',formObj);
 			}
 			
@@ -199,6 +215,63 @@
 				}else{
 					buissnesser.selectedIndex = -1;
 				}
+				
+				this.setComplexBuissnesser(result);
+			}
+			
+			private function setComplexBuissnesser(data:ArrayCollection):void{
+				this.complex_buissnesser.dataProvider = data;
+				this.complex_buissnesser.labelField = 'name';
+				this.complex_buissnesser.selectedIndex = -1;
+				
+				this.complex_buissnesser.addEventListener(Event.CHANGE,setComplexServers);
+				
+				if(formObj != null &&  formObj.complexid !=0 && Number(formObj.complexid) != Number(formObj.id)){
+					   amf = new Amf;
+					   amf.registerCallBack(toShowUpdateComplex);
+					   amf.startService('serverService','getServerBySid',formObj.complexid);
+				}
+			}
+			
+			private function toShowUpdateComplex(evt:AppEvent):void{
+				var complexServer :Object = amf.getResult() as Object;
+				amf = new Amf;
+				amf.registerCallBack(toShowUpdateComplexHandler);
+				amf.startService('serverService','getServer',complexServer.bid);
+			}
+			
+			private function toShowUpdateComplexHandler(evt:AppEvent):void{
+				var complexServers:ArrayCollection = new ArrayCollection(amf.getResult() as Array);
+				this.complex_server.dataProvider = complexServers;
+				this.complex_server.labelField = 'name';
+				var bid : int =0;
+				for(var i:int=0 ; i < complexServers.length ; i++ ) {
+					if(complexServers[i].id == formObj.complexid){
+						this.complex_server.selectedIndex = i;
+						bid = complexServers[i].bid;
+						break;
+					}
+				}
+				
+				var buissnessers : ArrayCollection = this.complex_buissnesser.dataProvider as ArrayCollection;
+				for(i= 0 ; i < buissnessers.length; i++){
+					if(buissnessers[i].id == bid){
+						this.complex_buissnesser.selectedIndex = i;
+						break;
+					}
+				}
+			}
+			
+			private function setComplexServers(evt:Event):void{
+					var bid : int = this.complex_buissnesser.selectedItem.id;
+					amf = new Amf;
+					amf.registerCallBack(setComplexServersHandler);
+					amf.startService('serverService','getServer',bid);
+			}
+			
+			private function setComplexServersHandler(evt:AppEvent):void{
+					this.complex_server.dataProvider = new ArrayCollection( amf.getResult()  as Array);
+					this.complex_server.labelField = 'name';
 			}
 			
 			private function setGameVer(evt:AppEvent):void{
@@ -247,6 +320,18 @@
 				if(formObj.status == 1)this.status.selectedIndex = 0;
 				else this.status.selectedIndex = 1;
 				
+				if(formObj.complexid == formObj.id){
+					this.ck_complex_main.selected = true;
+					this.ck_complex.selected = false;
+					this.ck_complex.enabled = false;
+				}else if(formObj.complexid != 0){
+					this.ck_complex.selected = true;
+					this.complex_buissnesser.enabled = true;
+					this.complex_server.enabled = true;
+					this.ck_complex_main.selected = false;
+					this.ck_complex_main.enabled = false; 
+				}
+				
 				//获取所有运营商
 				amf = new Amf();
 				amf.registerCallBack(setBuissnessers);
@@ -262,6 +347,28 @@
 				gameamf1.setFaultMessage("无法获取游戏版本");
 				gameamf1.registerCallBack(setGameCVer);
 				gameamf1.startService('gameCVerService','listsNoPage');
+			}
+			
+			private function enableComplex():void{
+				if(ck_complex.selected){
+					 complex_buissnesser.enabled = true;
+					 complex_server.enabled = true;
+					 ck_complex_main.enabled = false;
+				}else{
+					complex_buissnesser.enabled = false;
+					complex_server.enabled = false;
+					ck_complex_main.enabled = true;
+				}
+			}
+			
+			private function enableComplexMain():void{
+				 if(ck_complex_main.selected){
+					  this.complex_buissnesser.enabled = false;
+					  this.complex_server.enabled = false;
+					  this.ck_complex.enabled = false;
+				 }else{
+					 this.ck_complex.enabled = true;
+				 }
 			}
 		]]>
 	</fx:Script>
@@ -311,6 +418,14 @@
 		<s:Label x="46" y="545" text="客户端版本"/>
 		<mx:ComboBox id="gamecver" x="144" y="540" width="200"/>
 		<s:Label x="350" y="541" color="#FF0C0C" text="*"/>
+				<s:CheckBox id="ck_complex" x="371" y="231" label="混服" click="enableComplex()"/>
+				<s:Label x="423" y="235" text="运营商"/>
+				<mx:ComboBox id="complex_buissnesser" x="470" y="228" height="25" enabled="false" closeDuration="300" openDuration="300" minWidth="160"/>
+				<s:Label x="423" y="266" text="服务器"/>
+				<mx:ComboBox id="complex_server" x="471" y="261" height="25" enabled="false" closeDuration="300" openDuration="300" minWidth="160"/>
+				<s:Label x="370" y="308" width="137" color="#FE0A0A" fontWeight="bold" text="设置混服主服"/>
+				<s:CheckBox id="ck_complex_main" x="371" y="324" label="混服主服" click="enableComplexMain()"/>
+				<s:Label x="371" y="211" color="#F90202" fontWeight="bold" text="设置被混服"/>
 		</s:Group>
 		</s:Scroller>
 	</s:Panel>

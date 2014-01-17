@@ -64,9 +64,12 @@
 					{name:'全部',value:''}
 				]);
 				this.cb_series.labelField = 'name';
+				this.cb_series.rowCount = 25;
 				
 				this.cb_version.labelField = 'version';
+				this.cb_version.rowCount = 25;
 				this.cb_cversion.labelField='version';
+				this.cb_cversion.rowCount = 25;
 				
 			    seriesAmf = new Amf;
 				seriesAmf.registerCallBack(setSeries);
@@ -297,8 +300,8 @@
 				sb.method = 'lists';
 				sb.methodTotal = 'num_rows';
 				sb.container = this;
-				if(sb.is_total_exec)
 				sb.condition = this.getCondition();
+				if(!sb.is_total_exec)
 				sb.initTotal();				
 			}
 			
@@ -437,9 +440,12 @@
 				mergeWindow.to_server_series = this.cd.selecteditem.gameseries;
 				mergeWindow.to_server_version = this.cd.selecteditem.gamever;
 				mergeWindow.to_server_cversion = this.cd.selecteditem.gamecver;
+				mergeWindow.to_bid = this.cd.selecteditem.bid;
+				mergeWindow.to_mergeid = this.cd.selecteditem.mergeid;
 				mergeWindow.tw.title = "合服到"+this.cd.selecteditem.name;
 				mergeWindow.init();
 			}
+			
 			
 			private function createCUpdateWindow():void{
 				var columns:Array = [];
@@ -685,6 +691,7 @@
 				
 				this.createMergeWindow();
 			}
+			
 			
 			/*=========回档=========*/
 			private function confirmRollback():void{

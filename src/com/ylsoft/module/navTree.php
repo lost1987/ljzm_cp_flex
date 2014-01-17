@@ -9,6 +9,7 @@
    		<NODE name="单系统ARPU" module="data/singleArpuData_list" permission="16"  visiable="true"></NODE>
    		<NODE name="充值排名" module="data/rechargeOrderData_list" permission="32"  visiable="true"></NODE>
    		<NODE name="用户分析" module="data/userAnalysisData_list" permission="64"  visiable="true"></NODE>
+   		<NODE name="月充值查询" module="data/payMonth_list" permission="128"  visiable="true"></NODE>
    </FOLDER>
    <FOLDER name="流失率"  type="folder" permission="2" id="lsl">
    			<NODE name="角色流失率" module="data/userTurnOverData_list" permission="1"  visiable="true"></NODE>

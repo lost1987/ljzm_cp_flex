@@ -196,6 +196,7 @@
 				condition.opstate = this.opstate.selectedItem.value;
 				condition.server = server;
 				condition.order = order.selectedItem.value;
+				condition.account_prefix = this.account_prefix.text;
 				return condition;
 			}
 			
@@ -293,6 +294,8 @@
 		<mx:ComboBox id="order" left="400" top="1" width="156" height="25" openDuration="300"/>
 		<s:Label x="11" y="36" text="操作状态"/>
 		<mx:ComboBox id="opstate" x="95" y="29" width="129" height="24"/>
+		<s:Label x="232" y="36" text="标识筛选"/>
+		<s:TextInput id="account_prefix" x="287" y="30" width="83"/>
 	</s:Panel>	
 	
 </s:Module>

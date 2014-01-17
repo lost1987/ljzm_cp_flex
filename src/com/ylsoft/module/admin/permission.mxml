@@ -149,6 +149,7 @@
 				this.admins.labelField = 'flagname';
 				this.admins.dataProvider = new ArrayCollection(amf.getResult() as Array);
 				this.admins.selectedIndex = -1;
+				this.admins.rowCount = 25;
 			}
 		]]>
 	</fx:Script>

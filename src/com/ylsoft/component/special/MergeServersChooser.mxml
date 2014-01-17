@@ -30,13 +30,17 @@
 			public var to_server_series:String;
 			public var to_server_version:String;
 			public var to_server_cversion:String;
+			public var to_bid:String;
+			public var to_mergeid:String;
 			
 			public function init():void{
 				var info:Object = new Object;
 				info.sid = to_server_id;
+				info.bid = to_bid;
 				info.series = to_server_series;
 				info.version = to_server_version;
 				info.cversion = to_server_cversion;
+				info.mergeid = to_mergeid;
 				serverAmf = new Amf;
 				serverAmf.registerCallBack(setServerlistChooser);
 				serverAmf.startService('serverService','serversNoPageByExceptSid',info);

@@ -3,6 +3,7 @@
 		  xmlns:s="library://ns.adobe.com/flex/spark"  creationComplete="init()"
 		  xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
 	<fx:Declarations>
+		<s:RadioButtonGroup id="radiogroup"/>
 		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
 	</fx:Declarations>
 	<fx:Script>
@@ -21,6 +22,7 @@
 			import mx.controls.dataGridClasses.DataGridColumn;
 			import mx.core.FlexGlobals;
 			private var amf:Amf;
+			private var _amf : Amf;
 			private var columsInited:Boolean;
 			
 			private function init():void{
@@ -31,6 +33,10 @@
 				amf.registerCallBack(initDataGrid);
 				amf.startService('serverService','lists',new Pagelimit(0,AppConfig.PAGECOUNT));
 				initSubpage();
+				
+				_amf = new Amf();
+				_amf.registerCallBack(setBuissnessers);
+				_amf.startService('buissnesserService','listNoPage');
 			}
 			
 			public function initDataGrid(evt:AppEvent):void{
@@ -97,12 +103,25 @@
 					col9.headerText = '合服时间';
 					col9.width = 200;
 					
+					var col11:DataGridColumn = new DataGridColumn();
+					col11.dataField = 'complexflag';
+					col11.headerText = '混服标识';
+					col11.width = 100;
 					
-					cd.dg.columns = cd.dg.columns.concat(new Array(col1,col2,col3,col4,col5,col6,col7,col10,col8,col9));
+					
+					cd.dg.columns = cd.dg.columns.concat(new Array(col1,col2,col3,col4,col5,col6,col7,col10,col8,col9,col11));
 					columsInited = true;
 				}
 			}
 			
+			private function setBuissnessers(evt:AppEvent):void{
+				    var result : ArrayCollection = new ArrayCollection(_amf.getResult() as Array);
+					result.addItemAt({id:'-1',name:'全部'},0);
+					this.cb_buissnesser.dataProvider = result;
+					this.cb_buissnesser.labelField = 'name';
+					this.cb_buissnesser.selectedIndex = 0;
+					this.cb_buissnesser.rowCount = 25;
+			}
 			
 			private function addAdmin(evt:MouseEvent):void{
 				FlexGlobals.topLevelApplication.main_right.removeAllElements();
@@ -165,6 +184,41 @@
 				sb.initTotal();				
 			}
 			
+			private function getCondition():Object{
+				var condition : Object = new Object();
+				condition.bid = this.cb_buissnesser.selectedItem.id;
+				condition.is_require_mergeid =  this.ck_hf.selected  ? 1 : -1;
+				condition.is_require_complexid = this.ck_mf.selected ? 1 : -1;
+				return condition;
+			}
+			
+			private function doSearch():void{
+				this.sb.is_total_exec = false;
+				var condition : Object = this.getCondition();
+				amf = new Amf();
+				amf.setFaultMessage("通信失败");
+				amf.registerCallBack(initDataGrid);
+				amf.startService('serverService','lists',new Pagelimit(0,AppConfig.PAGECOUNT),condition);
+				this.sb.condition = condition;
+				initSubpage();
+			}
+			
+			private function checkHFState():void{
+				  if(this.ck_hf.selected){
+					  this.ck_mf.enabled = false;
+				  }else{
+					  this.ck_mf.enabled = true;
+				  }
+			}
+			
+			
+			private function checkMFState():void{
+				if(this.ck_mf.selected){
+					this.ck_hf.enabled = false;
+				}else{
+					this.ck_hf.enabled = true;
+				}
+			}
 		]]>
 	</fx:Script>
 	<s:Panel x="0" y="0" width="100%" height="100%">
@@ -175,10 +229,24 @@
 		<component:Subpages id="sb" x="0" bottom="0">
 		</component:Subpages>
 		<s:HGroup right="2" top="2" width="300">
-			<s:Button y="3" right="89" height="25" label="查询"  buttonMode="true"/>
-			<s:Button y="3" right="17" height="25" label="删除" buttonMode="true" click="delAdmin(event)"/>
+			<s:Button y="3" right="89" height="25" label="查询"  buttonMode="true" click="doSearch()"  />
+			<s:Button y="3" right="17" height="25" label="删除" buttonMode="true" click="delAdmin(event)" enabled="false"/>
 			<s:Button y="3" right="233" height="25" label="添加" click="addAdmin(event)" buttonMode="true"/>
 			<s:Button y="3" right="161" height="25" label="编辑" click="editAdmin(event)" buttonMode="true"/>
 		</s:HGroup>
+		<s:Form x="0" y="0" width="70%" height="10%">
+			<s:layout>
+				<s:BasicLayout/>
+			</s:layout>
+			<s:FormItem label="运营商">
+				<mx:ComboBox minWidth="150" height="25" id="cb_buissnesser" />
+			</s:FormItem>
+			<s:FormItem x="218" y="-9" height="35">
+				<s:CheckBox x="0" y="1" label="合服" id="ck_hf" click="checkHFState()"/>
+			</s:FormItem>
+			<s:FormItem x="218" y="15">
+				<s:CheckBox x="262" y="27" label="混服" id="ck_mf" click="checkMFState()"/>
+			</s:FormItem>
+		</s:Form>
 	</s:Panel>
 </s:Module>

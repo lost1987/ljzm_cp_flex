@@ -144,7 +144,7 @@
 			
 			
 			private function initSubpage():void{
-				sb.service = 'OperationlogService';
+				sb.service = 'operationlogService';
 				sb.method = 'lists';
 				sb.methodTotal = 'num_rows';
 				sb.container = this;
@@ -173,6 +173,7 @@
 			private function initLogTypes(evt:AppEvent):void{
 				 cb_logtypes.dataProvider = new ArrayCollection(log_amf.getResult() as Array);
 				 cb_logtypes.labelField = 'name';
+				 this.cb_logtypes.rowCount = 25;
 			}
 			
 		]]>
